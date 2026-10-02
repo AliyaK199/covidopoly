@@ -72,7 +72,27 @@ button.card:hover{transform:translateY(-3px)}
 .log{font-size:15px;color:var(--muted);max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 .log div:first-child{color:var(--ink);font-weight:600}
 .notice.play{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;max-height:55vh;overflow-y:auto;box-shadow:0 8px 16px rgba(0,0,0,.22)}
-.first{order:-1}
+.zone{border:1.5px dashed var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+summary{cursor:pointer;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+details[open]>summary{margin-bottom:8px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--c);margin-left:5px;vertical-align:-1px}
+.dot.on{background:var(--c)}
+.spacer{height:215px}
+.handbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:2px solid var(--ink);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
+.handbar .hand{flex-wrap:nowrap;overflow-x:auto;padding:6px 2px 6px}
+.handbar .card{flex:none;width:106px}
+.handbar .card .in{min-height:150px;padding:7px 4px}
+.handbar .card .nm{font-size:11.5px}
+.handbar .card .lb{font-size:10px;letter-spacing:.04em}
+.handbar .card .ds{font-size:11.5px}
+.handbar .card .art{width:42px;height:42px}
+.handbar .card.money .nm{font-size:36px}
+[data-drag]{touch-action:pan-x;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.95;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.lifting{opacity:.25}
+body.dragging [data-drop]{outline:2px dashed var(--accent);outline-offset:-3px}
+body.dragging [data-drop].over{outline-style:solid;outline-width:4px;box-shadow:inset 0 0 0 999px rgba(240,185,11,.18)}
+body.dragging{user-select:none;-webkit-user-select:none}
 @media (max-width:560px){
   body{font-size:16px}
   #app{gap:14px}
@@ -80,8 +100,8 @@ button.card:hover{transform:translateY(-3px)}
   .notice .big{font-size:18px}
   .btn{min-height:44px}
   .notice .row .btn{flex:1 1 auto}
-  .hand,.stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .hand .card,.stack .card{width:auto}
+  .stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .stack .card{width:auto}
   .sets{flex-direction:column}
   .card .in{min-height:160px;padding:7px 4px}
   .card.sm .in{min-height:0}
@@ -163,11 +183,11 @@ function say(g,t){g.log.unshift(t);if(g.log.length>40)g.log.length=40;}
 function draw(g,p,n){for(let i=0;i<n;i++){if(!g.deck.length){g.deck=shuffle(g.discard);g.discard=[];}if(!g.deck.length)break;g.hands[p].push(g.deck.pop());}}
 function startTurn(g){const p=g.order[g.turn];g.plays=0;
   if(g.skip[p]){g.skip[p]=false;say(g,pname(g,p)+' has a delayed shipment and draws nothing.');}else draw(g,p,g.hands[p].length?2:5);}
-function played(g,id){g.played.push(id);if(g.played.length>3)g.played.shift();}
+function played(g,id,p){g.played.push(id);if(g.played.length>3)g.played.shift();g.last[p]=id;}
 function nextTurn(g){g.pending=null;g.turn=(g.turn+1)%g.order.length;startTurn(g);}
 function newGame(players,host){
   const g={status:'playing',host:host,v:1,players:players,order:players.map(p=>p.id),turn:0,plays:0,
-    deck:shuffle(CARDS.map(c=>c.id)),discard:[],hands:{},bank:{},props:{},ups:{},skip:{},played:[],peek:null,pending:null,log:[],winner:null};
+    deck:shuffle(CARDS.map(c=>c.id)),discard:[],hands:{},bank:{},props:{},ups:{},skip:{},last:{},played:[],peek:null,pending:null,log:[],winner:null};
   g.order.forEach(p=>{g.hands[p]=[];g.bank[p]=[];g.props[p]=[];g.ups[p]=[];g.skip[p]=false;draw(g,p,5);});
   say(g,'Cards dealt. '+pname(g,g.order[0])+' goes first.');
   startTurn(g);return g;
@@ -204,7 +224,7 @@ function act(g,me,a){
     const t=q.queue[0];
     if(a.r==='nope'){
       const id=hand.find(i=>CARDS[i].act==='nope');if(id==null)return 'You have no No! I\'m in Quarantine card.';
-      take(hand,id);g.discard.push(id);played(g,id);q.nope++;say(g,who+' played No! I\'m in Quarantine.');return null;
+      take(hand,id);g.discard.push(id);played(g,id,me);q.nope++;say(g,who+' played No! I\'m in Quarantine.');return null;
     }
     if(q.nope%2===1){say(g,who+' let it go.');}
     else if(q.type==='pay'){
@@ -249,7 +269,7 @@ function act(g,me,a){
     if(!c.sets&&!isOther(a.target))return 'Pick who gets the bill.';
     let amt=rentFor(g,me,s),dbl=null;
     if(a.double){dbl=hand.find(i=>CARDS[i].act==='double');if(dbl==null||g.plays>1)return 'You cannot add SBA Loan now.';amt*=2;}
-    take(hand,c.id);g.discard.push(c.id);played(g,c.id);g.plays++;
+    take(hand,c.id);g.discard.push(c.id);played(g,c.id,me);g.plays++;
     if(dbl!=null){take(hand,dbl);g.discard.push(dbl);g.plays++;}
     g.pending={type:'pay',from:me,queue:c.sets?others.slice():[a.target],amount:amt,nope:0};
     say(g,who+' sent a bill of '+amt+' for '+SETS[s].n+(c.sets?' to everyone.':' to '+pname(g,a.target)+'.'));
@@ -282,7 +302,7 @@ function act(g,me,a){
       p={type:'handswap',from:me,queue:[a.target],give:a.give,nope:0};say(g,who+' is trading a card with '+pname(g,a.target)+'.');
     }else return 'That card only works as a reply or with a bill.';
     take(hand,c.id);
-    g.discard.push(c.id);played(g,c.id);g.plays++;g.pending=p;
+    g.discard.push(c.id);played(g,c.id,me);g.plays++;g.pending=p;
   }else return 'That card cannot be played that way.';
   settle(g);return null;
 }
@@ -290,7 +310,7 @@ function act(g,me,a){
 
 const $app=document.getElementById('app');
 let db=null,me=null,code=null,game=null,seats=[],unsubs=[],handlers=[];
-const ui={ready:false,nodb:false,name:'',join:'',msg:'',busy:false,v:-1,sel:null,recolor:null,step:{},pay:new Set(),disc:null};
+const ui={ready:false,nodb:false,name:'',join:'',msg:'',busy:false,v:-1,sel:null,recolor:null,step:{},pay:new Set(),disc:null,open:{}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
 function on(fn){handlers.push(fn);return 'data-h="'+(handlers.length-1)+'"';}
@@ -320,15 +340,15 @@ function cardHTML(id,o){
     ds=c.sets?'Everyone pays rent on your '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'One player pays rent on any set you own.';
   }else{const A=ACTIONS[c.act];band=tc=A[4];label=c.act==='house'||c.act==='hotel'?'Upgrade':'Action';ds=A[1];art=germ(tc,A[5]);}
   const tag=o.fn?'button':'div';
-  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+
+  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+(o.attr||'')+
     ' style="--band:'+band+';--tc:'+tc+'"><span class="in">'+(c.k==='money'?'':'<span class="val">'+c.val+'</span>')+
     '<span class="lb">'+esc(label)+'</span><span class="nm">'+esc(c.name)+'</span>'+art+'<span class="ds">'+esc(ds)+'</span></span></'+tag+'>';
 }
 function setsHTML(g,p,fn){
   const out=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>{
     const n=count(g,p,s),full=n>=SETS[s].size;
-    return '<div class="set'+(full?' full':'')+'"><span>'+esc(SETS[s].n)+' '+n+'/'+SETS[s].size+' · rent '+rentFor(g,p,s)+'</span><div class="stack">'+
-      g.props[p].filter(x=>x.color===s).concat(g.ups[p].filter(u=>u.color===s)).map(x=>cardHTML(x.id,{sm:true,color:x.color,fn:fn?fn(x):null,sel:ui.pay.has(x.id)||ui.recolor===x.id})).join('')+'</div></div>';
+    return '<div class="set'+(full?' full':'')+'" data-drop="set:'+p+':'+s+'"><span>'+esc(SETS[s].n)+' '+n+'/'+SETS[s].size+' · rent '+rentFor(g,p,s)+'</span><div class="stack">'+
+      g.props[p].filter(x=>x.color===s).concat(g.ups[p].filter(u=>u.color===s)).map(x=>cardHTML(x.id,{sm:true,color:x.color,attr:' data-drop="card:'+p+':'+x.id+'"',fn:fn?fn(x):null,sel:ui.pay.has(x.id)||ui.recolor===x.id})).join('')+'</div></div>';
   });
   return out.length?'<div class="sets">'+out.join('')+'</div>':'<p class="muted">No properties yet.</p>';
 }
@@ -348,7 +368,7 @@ function vHome(){
 }
 function rulesHTML(){
   return '<div class="col"><h2>How to play</h2><ul>'+
-  '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards.</li>'+
+  '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards by dragging them from your hand onto a table.</li>'+
   '<li>Put properties on the table to build sets. Put rolls and unwanted action cards in your stockpile to pay bills.</li>'+
   '<li>Bill Due cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
   '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
@@ -405,13 +425,13 @@ function controls(g){
     (c.sets||Object.keys(SETS)).forEach(s=>out.push(btn(SETS[s].n,()=>commit({t:'recolor',card:c.id,color:s}))));
     return out.join('');
   }
-  if(ui.sel!=null&&left>0)out.push(sheet(g,CARDS[ui.sel]));
-  else if(left>0)out.push('<p class="muted">Tap a card in your hand to play it.</p>');
+  if(ui.sel!=null&&left>0)out.push(sheet(g,CARDS[ui.sel])+btn('Cancel',()=>{resetSel();render();}));
+  else if(left>0)out.push('<p class="muted">Drag a card from your hand onto a table: your own for properties and stockpile, another player\'s to hit them, or here for other actions.</p>');
   out.push(btn('End turn',()=>{if(over>0){ui.sel=null;ui.disc=new Set();render();}else commit({t:'end'});},left>0&&ui.sel!=null?'':'go'));
   return out.join('');
 }
 function sheet(g,c){
-  const out=[],id=c.id,others=g.order.filter(p=>p!==me),left=3-g.plays;
+  const out=[],id=c.id,others=g.order.filter(p=>p!==me&&(!ui.step.target||p===ui.step.target)),left=3-g.plays;
   const play=x=>commit(Object.assign({t:'play',card:id},x));
   if(c.k==='prop')out.push(btn('Put down '+c.name,()=>commit({t:'prop',card:id,color:c.set}),'go'));
   else if(c.k==='wild'){out.push('<p>Put it down as:</p>');(c.sets||Object.keys(SETS)).forEach(s=>out.push(btn(SETS[s].n,()=>commit({t:'prop',card:id,color:s}),'go')));}
@@ -463,27 +483,100 @@ function vTable(){
   const big=g.status==='over'?pname(g,g.winner)+' wins with three full sets.':
     g.pending?pendingText(g):myTurn?'Your turn. '+(3-g.plays)+' play'+(3-g.plays===1?'':'s')+' left.':pname(g,turnP)+"'s turn.";
   const togglePay=id=>()=>{ui.pay.has(id)?ui.pay.delete(id):ui.pay.add(id);render();};
-  const opp=g.order.filter(p=>p!==me).map(p=>
-    '<div class="panel'+(actor===p?' turn':'')+'"><h2>'+esc(pname(g,p))+(complete(g,p).length?' · '+complete(g,p).length+' of 3 sets':'')+'</h2>'+
-    '<div class="chips"><span>Hand <b>'+g.hands[p].length+'</b></span><span>Stockpile <b>'+total(g.bank[p])+'</b>'+(g.bank[p].length?' ('+g.bank[p].map(i=>CARDS[i].val).sort((a,b)=>b-a).join(', ')+')':'')+'</span></div>'+
-    setsHTML(g,p)+'</div>').join('');
-  let mine='';
-  if(inGame){
-    const hand=g.hands[me];
-    mine='<div class="panel'+(actor===me?' turn':'')+'"><h2>Your properties · '+complete(g,me).length+' of 3 sets</h2>'+
-      setsHTML(g,me,x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null)+
-      '<h2>Your stockpile · '+total(g.bank[me])+'</h2>'+
-      (g.bank[me].length?'<div class="stack">'+g.bank[me].slice().sort((a,b)=>CARDS[b].val-CARDS[a].val).map(i=>cardHTML(i,{sm:true,fn:paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">Empty. Stockpile rolls so bills do not eat your properties.</p>')+
-      '<h2 class="first">Your hand · '+hand.length+'</h2><div class="hand first">'+hand.map(i=>cardHTML(i,{
-        sel:ui.sel===i||(ui.disc&&ui.disc.has(i)),
-        fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
+  const table=p=>{
+    const mineT=p===me,bank=g.bank[p].slice().sort((a,b)=>CARDS[b].val-CARDS[a].val);
+    const dots=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>'<i class="dot'+(count(g,p,s)>=SETS[s].size?' on':'')+'" style="--c:'+SETS[s].col+'"></i>').join('');
+    const fn=mineT?x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null:null;
+    return '<section class="panel'+(actor===p?' turn':'')+'" data-drop="player:'+p+'">'+
+      '<h2>'+(mineT?'Your table':esc(pname(g,p)))+' · '+complete(g,p).length+' of 3 sets</h2>'+
+      (mineT?'':'<div class="chips"><span>Cards in hand <b>'+g.hands[p].length+'</b></span></div>')+
+      '<div class="zone" data-drop="bank:'+p+'"><h2>Stockpile · '+total(bank)+'</h2>'+
+        (bank.length?'<div class="stack">'+bank.map(i=>cardHTML(i,{sm:true,fn:mineT&&paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">'+(mineT?'Drop rolls and spare action cards here.':'Empty.')+'</p>')+'</div>'+
+      (g.last[p]!=null?'<div class="zone"><h2>Last action played</h2><div class="stack">'+cardHTML(g.last[p],{sm:true})+'</div></div>':'')+
+      '<details class="zone" data-p="'+p+'" data-drop="props:'+p+'"'+(ui.open[p]===false?'':' open')+'><summary>Properties · '+g.props[p].length+dots+'</summary>'+
+        (g.props[p].length?setsHTML(g,p,fn):'<p class="muted">'+(mineT?'Drop property cards here.':'None yet.')+'</p>')+'</details></section>';
+  };
+  let handbar='';
+  if(inGame&&g.status==='playing'){
+    const hand=g.hands[me],canDrag=myTurn&&!ui.disc;
+    handbar='<div class="spacer"></div><div class="handbar"><h2>Your hand · '+hand.length+(canDrag?' · drag a card up to play it':'')+'</h2><div class="hand">'+hand.map(i=>cardHTML(i,{
+      sel:ui.sel===i||(ui.disc&&ui.disc.has(i)),attr:canDrag?' data-drag="'+i+'"':'',
+      fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
   }
   return '<header><h1>Quarantine Deal</h1><p>Table <span class="code">'+esc(code)+'</span></p>'+
     '<div class="chips"><span>Deck <b>'+g.deck.length+'</b></span><span>Discards <b>'+g.discard.length+'</b></span></div></header>'+
-    '<div class="notice play"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
-    peekHTML(g)+mine+'<div class="grid">'+opp+'</div>'+
-    '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>';
+    '<div class="notice play" data-drop="pile"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
+    peekHTML(g)+'<div class="grid">'+g.order.filter(p=>p!==me).map(table).join('')+'</div>'+(inGame?table(me):'')+
+    '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>'+handbar;
 }
+// A hand card was dropped on a zone. Play it outright when the drop says everything; otherwise open the chooser for what is left to decide.
+function dropCard(id,drop){
+  const g=game,c=CARDS[id];if(!g||!g.hands[me]||!g.hands[me].includes(id))return;
+  const d=drop.split(':'),z=d[0],p=d[1],x=d[2],onMe=p===me,target=p&&!onMe?p:null;
+  const play=o=>commit(Object.assign({t:'play',card:id},o));
+  const ask=step=>{ui.sel=id;ui.recolor=null;ui.step=step||{};ui.msg='';render();};
+  if(c.k==='prop'||c.k==='wild'){
+    if(target)return flash('Properties go on your own table.');
+    if(c.k==='prop')return commit({t:'prop',card:id,color:c.set});
+    if((z==='set'||z==='card')&&onMe){const col=z==='set'?x:(g.props[me].find(y=>y.id===+x)||{}).color;if(validColor(c,col))return commit({t:'prop',card:id,color:col});}
+    return ask();
+  }
+  if(c.k==='money'||(z==='bank'&&onMe))return commit({t:'bank',card:id});
+  const a=c.act,canDbl=3-g.plays>=2&&g.hands[me].some(i=>CARDS[i].act==='double');
+  if(c.k==='rent'){
+    const owned=(c.sets||Object.keys(SETS)).filter(s=>count(g,me,s));
+    if(owned.length===1&&!canDbl&&(c.sets||target))return play({color:owned[0],target:target});
+    return ask(target?{target:target}:{});
+  }
+  if(a==='house'||a==='hotel'){
+    const ok=complete(g,me).filter(s=>!g.ups[me].some(u=>u.color===s&&CARDS[u.id].act===a));
+    if(z==='set'&&onMe&&ok.includes(x))return play({color:x});
+    return ok.length===1?play({color:ok[0]}):ask();
+  }
+  if(a==='draw'||a==='bday')return play({});
+  if(a==='debt'||a==='peek'||a==='nodraw'||a==='redraw')return target?play({target:target}):ask();
+  const theirs=target&&z==='card'?g.props[target].find(y=>y.id===+x):null;
+  if(a==='sly')return theirs&&stealable(g,target).includes(theirs)?play({target:target,take:theirs.id}):ask(target?{target:target}:{});
+  if(a==='breaker'){const col=z==='set'?x:theirs?theirs.color:null;return target&&col&&complete(g,target).includes(col)?play({target:target,color:col}):ask(target?{target:target}:{});}
+  if(a==='swap')return theirs&&stealable(g,target).includes(theirs)?ask({target:target,take:{p:target,x:theirs}}):ask(target?{target:target}:{});
+  ask(target?{target:target}:{});
+}
+let drag=null,skipClick=false;
+const zoneAt=(x,y)=>{const e=document.elementFromPoint(x,y);return e?e.closest('[data-drop]'):null;};
+function dragEnd(){
+  if(!drag)return;clearInterval(drag.timer);
+  if(drag.ghost){drag.ghost.remove();document.body.classList.remove('dragging');}
+  document.querySelectorAll('.over,.lifting').forEach(e=>e.classList.remove('over','lifting'));drag=null;
+}
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest('[data-drag]');if(!el||e.button>0)return;
+  dragEnd();drag={id:+el.dataset.drag,el:el,x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,pid:e.pointerId,ghost:null};
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.pid)return;
+  drag.x=e.clientX;drag.y=e.clientY;
+  if(!drag.ghost){
+    if(Math.hypot(drag.x-drag.x0,drag.y-drag.y0)<10)return;
+    const r=drag.el.getBoundingClientRect(),gh=drag.el.cloneNode(true);
+    gh.classList.add('ghost');gh.classList.remove('sel');gh.removeAttribute('data-h');gh.removeAttribute('data-drag');gh.style.width=r.width+'px';
+    document.body.appendChild(gh);drag.ghost=gh;drag.w=r.width;drag.h=r.height;drag.el.classList.add('lifting');document.body.classList.add('dragging');
+    // scroll the page when the card is held near the top, or just above the hand
+    drag.timer=setInterval(()=>{const bar=document.querySelector('.handbar'),low=(bar?bar.getBoundingClientRect().top:innerHeight)-30;
+      if(drag.y<70)scrollBy(0,-14);else if(drag.y>low&&drag.y<low+60)scrollBy(0,14);},16);
+  }
+  drag.ghost.style.transform='translate('+(drag.x-drag.w/2)+'px,'+(drag.y-drag.h*.7)+'px) rotate(3deg)';
+  const z=zoneAt(drag.x,drag.y);
+  document.querySelectorAll('.over').forEach(o=>{if(o!==z)o.classList.remove('over');});
+  if(z)z.classList.add('over');
+});
+document.addEventListener('pointerup',e=>{
+  if(!drag||e.pointerId!==drag.pid)return;
+  const moved=!!drag.ghost,id=drag.id,z=moved?zoneAt(e.clientX,e.clientY):null;
+  dragEnd();
+  if(moved){skipClick=true;setTimeout(()=>{skipClick=false;},60);if(z)dropCard(id,z.dataset.drop);}
+});
+document.addEventListener('pointercancel',dragEnd);
+document.addEventListener('toggle',e=>{const p=e.target.dataset&&e.target.dataset.p;if(p)ui.open[p]=e.target.open;},true);
 function peekHTML(g){
   if(!g.peek||g.peek.by!==me)return '';
   if(g.peek.n!==ui.peekN){ui.peekN=g.peek.n;ui.peekUntil=Date.now()+10000;setTimeout(render,10100);}
@@ -493,9 +586,11 @@ function peekHTML(g){
 function render(){
   handlers=[];
   if(game&&game.status!=='lobby'&&game.v!==ui.v){ui.v=game.v;resetSel();}
+  const h0=document.querySelector('.handbar .hand'),sx=h0?h0.scrollLeft:0;
   $app.innerHTML=!code||!game?vHome():game.status==='lobby'?vLobby():vTable();
+  const h1=document.querySelector('.handbar .hand');if(h1)h1.scrollLeft=sx;
 }
-document.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(b&&!b.disabled&&handlers[b.dataset.h])handlers[b.dataset.h]();});
+document.addEventListener('click',e=>{if(skipClick)return;const b=e.target.closest('[data-h]');if(b&&!b.disabled&&handlers[b.dataset.h])handlers[b.dataset.h]();});
 document.addEventListener('input',e=>{
   if(e.target.id==='f-name'){ui.name=e.target.value;store.set('qd_name',ui.name);}
   if(e.target.id==='f-code')ui.join=e.target.value;
