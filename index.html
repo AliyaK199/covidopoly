@@ -95,21 +95,21 @@ const SETS={
 };
 // name, effect, value, copies, frame colour, face
 const ACTIONS={
-  draw:['Stimulus Check','Draw 2 extra cards.',1,10,'#f5a94a','happy'],
-  bday:['Zoom Birthday','Everyone pays you 2.',2,3,'#f08ac0','happy'],
-  debt:['Landlord Calls','One player pays you 5.',3,3,'#35b59c','angry'],
-  sly:['Porch Pirate','Take one property that is not in a full set.',3,3,'#a08d84','cool'],
-  swap:['Contactless Swap','Swap one of your properties for one of theirs. No full sets.',3,3,'#c9c9c9','happy'],
-  breaker:['Lockdown Order','Take a full set from a player.',5,2,'#c08af5','angry'],
-  nope:['Six Feet Back','Cancel an action played against you.',4,3,'#5b8cf0','angry'],
-  double:['Surge Pricing','Play with a Bill Due card to double it.',1,2,'#e6cc5a','cool'],
-  house:['Bidet Upgrade','Add to a full set for 3 more rent.',3,3,'#74b3b0','happy'],
-  hotel:['Panic Room','Add to a full set for 4 more rent.',4,2,'#5cba6e','happy'],
-  peek:['Still Sharing','See one player\'s hand for 10 seconds.',3,2,'#52b0e0','cool'],
-  handswap:['Shared Doorknob','Trade a card from your hand for a random card from theirs.',2,2,'#f47a72','sad'],
-  retrieve:['Leftovers Night','Take back one of the last three action cards played.',1,2,'#c5cc3f','happy'],
-  nodraw:['Back-Ordered','One player draws nothing on their next turn.',2,2,'#f07a45','sad'],
-  redraw:['Spring Cleaning','One player discards their hand and draws the same number.',1,2,'#b0603f','sad']
+  draw:['Costco Run','Draw 2 extra cards.',1,10,'#f5a94a','happy'],
+  bday:['I\'ve Recovered','Everyone pays you 2.',2,3,'#f08ac0','happy'],
+  debt:['Contract Covid','One player pays you 5.',3,3,'#35b59c','angry'],
+  sly:['Close Business','Take one property that is not in a full set.',3,3,'#a08d84','cool'],
+  swap:['Close Schools','Swap one of your properties for one of theirs. No full sets.',3,3,'#c9c9c9','happy'],
+  breaker:['Close Borders','Take a full set from a player.',5,2,'#c08af5','angry'],
+  nope:['No! I\'m in Quarantine','Cancel an action played against you.',4,3,'#5b8cf0','angry'],
+  double:['SBA Loan','Play with a Bill Due card to double it.',1,2,'#e6cc5a','cool'],
+  house:['Toilet Paper Stash','Add to a full set for 3 more rent.',3,3,'#74b3b0','happy'],
+  hotel:['Social Distancing','Add to a full set for 4 more rent.',4,2,'#5cba6e','happy'],
+  peek:['Share Screen','See one player\'s hand for 10 seconds.',3,2,'#52b0e0','cool'],
+  handswap:['Cross Contaminate','Trade a card from your hand for a random card from theirs.',2,2,'#f47a72','sad'],
+  retrieve:['False Positive','Take back one of the last three action cards played.',1,2,'#c5cc3f','happy'],
+  nodraw:['Delayed Shipment','One player draws nothing on their next turn.',2,2,'#f07a45','sad'],
+  redraw:['Work From Home','One player discards their hand and draws the same number.',1,2,'#b0603f','sad']
 };
 const CARDS=(function(){
   const C=[],add=(n,c)=>{for(let i=0;i<n;i++)C.push(Object.assign({id:C.length},c));};
@@ -140,7 +140,7 @@ function take(arr,id){const i=arr.indexOf(id);if(i<0)return false;arr.splice(i,1
 function say(g,t){g.log.unshift(t);if(g.log.length>40)g.log.length=40;}
 function draw(g,p,n){for(let i=0;i<n;i++){if(!g.deck.length){g.deck=shuffle(g.discard);g.discard=[];}if(!g.deck.length)break;g.hands[p].push(g.deck.pop());}}
 function startTurn(g){const p=g.order[g.turn];g.plays=0;
-  if(g.skip[p]){g.skip[p]=false;say(g,pname(g,p)+' is back-ordered and draws nothing.');}else draw(g,p,g.hands[p].length?2:5);}
+  if(g.skip[p]){g.skip[p]=false;say(g,pname(g,p)+' has a delayed shipment and draws nothing.');}else draw(g,p,g.hands[p].length?2:5);}
 function played(g,id){g.played.push(id);if(g.played.length>3)g.played.shift();}
 function nextTurn(g){g.pending=null;g.turn=(g.turn+1)%g.order.length;startTurn(g);}
 function newGame(players,host){
@@ -181,8 +181,8 @@ function act(g,me,a){
     if(a.t!=='respond')return 'Answer the action first.';
     const t=q.queue[0];
     if(a.r==='nope'){
-      const id=hand.find(i=>CARDS[i].act==='nope');if(id==null)return 'You have no Six Feet Back card.';
-      take(hand,id);g.discard.push(id);played(g,id);q.nope++;say(g,who+' played Six Feet Back.');return null;
+      const id=hand.find(i=>CARDS[i].act==='nope');if(id==null)return 'You have no No! I\'m in Quarantine card.';
+      take(hand,id);g.discard.push(id);played(g,id);q.nope++;say(g,who+' played No! I\'m in Quarantine.');return null;
     }
     if(q.nope%2===1){say(g,who+' let it go.');}
     else if(q.type==='pay'){
@@ -226,15 +226,15 @@ function act(g,me,a){
     if(!SETS[s]||(c.sets&&!c.sets.includes(s))||!count(g,me,s))return 'Pick a set you own for this bill.';
     if(!c.sets&&!isOther(a.target))return 'Pick who gets the bill.';
     let amt=rentFor(g,me,s),dbl=null;
-    if(a.double){dbl=hand.find(i=>CARDS[i].act==='double');if(dbl==null||g.plays>1)return 'You cannot add Surge Pricing now.';amt*=2;}
+    if(a.double){dbl=hand.find(i=>CARDS[i].act==='double');if(dbl==null||g.plays>1)return 'You cannot add SBA Loan now.';amt*=2;}
     take(hand,c.id);g.discard.push(c.id);played(g,c.id);g.plays++;
     if(dbl!=null){take(hand,dbl);g.discard.push(dbl);g.plays++;}
     g.pending={type:'pay',from:me,queue:c.sets?others.slice():[a.target],amount:amt,nope:0};
     say(g,who+' sent a bill of '+amt+' for '+SETS[s].n+(c.sets?' to everyone.':' to '+pname(g,a.target)+'.'));
   }else if(c.k==='action'){
     let p=null;
-    if(c.act==='draw'){draw(g,me,2);say(g,who+' cashed a Stimulus Check and drew 2.');}
-    else if(c.act==='bday'){p={type:'pay',from:me,queue:others.slice(),amount:2,nope:0};say(g,who+' is having a Zoom Birthday. Everyone owes 2.');}
+    if(c.act==='draw'){draw(g,me,2);say(g,who+' made a Costco Run and drew 2.');}
+    else if(c.act==='bday'){p={type:'pay',from:me,queue:others.slice(),amount:2,nope:0};say(g,who+' has recovered. Everyone owes 2.');}
     else if(c.act==='debt'){if(!isOther(a.target))return 'Pick a player.';p={type:'pay',from:me,queue:[a.target],amount:5,nope:0};say(g,who+' is collecting 5 from '+pname(g,a.target)+'.');}
     else if(c.act==='sly'){
       if(!isOther(a.target)||!stealable(g,a.target).some(x=>x.id===a.take))return 'Pick a property that is not in a full set.';
@@ -245,7 +245,7 @@ function act(g,me,a){
       say(g,who+' wants to swap '+CARDS[a.give].name+' for '+pname(g,a.target)+"'s "+CARDS[a.take].name+'.');
     }else if(c.act==='breaker'){
       if(!isOther(a.target)||!complete(g,a.target).includes(a.color))return 'Pick a full set.';
-      p={type:'breaker',from:me,queue:[a.target],color:a.color,nope:0};say(g,who+' ordered a lockdown on '+pname(g,a.target)+"'s "+SETS[a.color].n+' set.');
+      p={type:'breaker',from:me,queue:[a.target],color:a.color,nope:0};say(g,who+' closed the borders on '+pname(g,a.target)+"'s "+SETS[a.color].n+' set.');
     }else if(c.act==='house'||c.act==='hotel'){
       if(!complete(g,me).includes(a.color)||g.ups[me].some(u=>u.color===a.color&&CARDS[u.id].act===c.act))return 'Pick one of your full sets that does not have this upgrade.';
       take(hand,c.id);g.ups[me].push({id:c.id,color:a.color});g.plays++;say(g,who+' added '+c.name+' to '+SETS[a.color].n+'.');return null;
@@ -329,8 +329,8 @@ function rulesHTML(){
   '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards.</li>'+
   '<li>Put properties on the table to build sets. Put rolls and unwanted action cards in your stockpile to pay bills.</li>'+
   '<li>Bill Due cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
-  '<li>Porch Pirate takes a property, Contactless Swap trades one, and Lockdown Order takes a whole set. Six Feet Back cancels any action aimed at you.</li>'+
-  '<li>Bidet Upgrade and Panic Room raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
+  '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
+  '<li>Toilet Paper Stash and Social Distancing raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
   '<li>End your turn with 7 cards or fewer. The first player with three full sets wins.</li></ul></div>';
 }
 function vLobby(){
@@ -350,7 +350,7 @@ function pendingText(g){
     q.type==='breaker'?f+' is taking '+t+"'s full "+SETS[q.color].n+' set.':
     q.type==='peek'?f+' wants to see '+t+"'s hand.":q.type==='nodraw'?f+' is making '+t+' skip their next draw.':
     q.type==='redraw'?f+' is making '+t+' discard their hand and redraw.':f+' is trading a random card with '+t+'.';
-  if(q.nope%2===1)s+=' '+t+' cancelled it with Six Feet Back.';
+  if(q.nope%2===1)s+=' '+t+' cancelled it with No! I\'m in Quarantine.';
   if(q.nope>0&&q.nope%2===0)s+=' '+f+' cancelled the cancel.';
   return s;
 }
@@ -367,7 +367,7 @@ function controls(g){
       out.push('<p>Tap cards in your stockpile or properties to pay. Selected: <b>'+sum+'</b> of '+q.amount+'.</p>');
       out.push(btn(sum>=q.amount?'Pay '+sum:ok?'Pay everything you have':'Pay',()=>commit({t:'respond',r:'ok',pay:[...ui.pay]}),'go',!ok));
     }else out.push(btn('Accept',()=>commit({t:'respond',r:'ok'}),'go'));
-    if(hasNope)out.push(btn(q.nope%2?'Counter with Six Feet Back':'Play Six Feet Back',()=>commit({t:'respond',r:'nope'})));
+    if(hasNope)out.push(btn(q.nope%2?'Counter with No! I\'m in Quarantine':'Play No! I\'m in Quarantine',()=>commit({t:'respond',r:'nope'})));
     return out.join('');
   }
   const left=3-g.plays,over=hand.length-HAND_LIMIT;
@@ -397,7 +397,7 @@ function sheet(g,c){
     const owned=(c.sets||Object.keys(SETS)).filter(s=>count(g,me,s));
     const canDbl=left>=2&&g.hands[me].some(i=>CARDS[i].act==='double');
     if(!owned.length)out.push('<p class="muted">You need a property in a matching set to send this bill.</p>');
-    if(canDbl&&owned.length)out.push(btn(ui.step.double?'Surge Pricing: on (uses 2 plays)':'Add Surge Pricing',()=>{ui.step.double=!ui.step.double;render();}));
+    if(canDbl&&owned.length)out.push(btn(ui.step.double?'SBA Loan: on (uses 2 plays)':'Add SBA Loan',()=>{ui.step.double=!ui.step.double;render();}));
     owned.forEach(s=>{const amt=rentFor(g,me,s)*(ui.step.double?2:1);
       if(c.sets)out.push(btn('Bill everyone '+amt+' for '+SETS[s].n,()=>play({color:s,double:!!ui.step.double}),'go'));
       else others.forEach(p=>out.push(btn('Bill '+pname(g,p)+' '+amt+' for '+SETS[s].n,()=>play({color:s,target:p,double:!!ui.step.double}),'go')));});
