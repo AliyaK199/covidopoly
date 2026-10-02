@@ -9,7 +9,7 @@ The page is published as a Claude artifact. It stores each table's state in the 
 ## How to play
 
 - Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards.
-- Put properties on the table to build sets. Put rolls and unwanted action cards in your stockpile to pay bills.
+- Put properties on the table to build sets. Put masks (M) and unwanted action cards in your stockpile to pay rent.
 - Rent cards charge rent on a set you own. Bills are paid from the stockpile or with properties, with no change given.
 - Close Business takes a property, Close Schools trades one, Close Borders takes a whole set. No! I'm in Quarantine cancels any action aimed at you.
 - Toilet Paper Stash (+3) and Social Distancing (+4) raise the rent on a full set.
