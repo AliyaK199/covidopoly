@@ -57,7 +57,7 @@ button.card{cursor:pointer}
 button.card:hover{transform:translateY(-3px)}
 .card .in{background:#242424;border-radius:8px;flex:1;min-width:0;min-height:184px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;position:relative;text-align:center}
 .card .val{position:absolute;top:-5px;left:-5px;width:29px;height:29px;border-radius:50%;background:#242424;border:3px solid var(--tc);display:grid;place-items:center;font-weight:700;font-size:13px}
-.card .lb{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b9b6ad}
+.card .lb{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b9b6ad;padding-left:20px;min-height:14px}
 .card .nm{font-family:'Alfa Slab One','Rockwell','Georgia',serif;font-size:15px;line-height:1.08;color:var(--tc);text-transform:uppercase;overflow-wrap:anywhere}
 .card .art{width:62px;height:62px;margin-block:auto;flex:none}
 .card .ds{font-size:13px;line-height:1.2;margin-top:auto}
@@ -71,6 +71,28 @@ button.card:hover{transform:translateY(-3px)}
 .card.sel{outline:4px solid var(--accent);outline-offset:1px;transform:translateY(-5px)}
 .log{font-size:15px;color:var(--muted);max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 .log div:first-child{color:var(--ink);font-weight:600}
+.notice.play{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;max-height:55vh;overflow-y:auto;box-shadow:0 8px 16px rgba(0,0,0,.22)}
+.first{order:-1}
+@media (max-width:560px){
+  body{font-size:16px}
+  #app{gap:14px}
+  .panel,.notice{padding:10px}
+  .notice .big{font-size:18px}
+  .btn{min-height:44px}
+  .notice .row .btn{flex:1 1 auto}
+  .hand,.stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .hand .card,.stack .card{width:auto}
+  .sets{flex-direction:column}
+  .card .in{min-height:160px;padding:7px 4px}
+  .card.sm .in{min-height:0}
+  .card .nm{font-size:11.5px}
+  .card .lb{font-size:10px;letter-spacing:.04em}
+  .card.sm .nm{font-size:11px}
+  .card .ds{font-size:12px}
+  .card .art{width:46px;height:46px}
+  .card.money .nm{font-size:38px}
+  .card.sm.money .nm{font-size:20px}
+}
 ul{margin:0;padding-left:20px;max-width:65ch}
 li{margin-block:3px}
 @media (prefers-reduced-motion:reduce){button.card:hover,.card.sel{transform:none}}
@@ -169,7 +191,7 @@ function applyEffect(g,q,t){
   if(q.type==='nodraw')g.skip[t]=true;
   if(q.type==='redraw'){const n=g.hands[t].length;g.discard.push(...g.hands[t]);g.hands[t]=[];draw(g,t,n);}
   if(q.type==='handswap'&&g.hands[t].length){const got=g.hands[t][Math.floor(Math.random()*g.hands[t].length)];
-    take(g.hands[t],got);take(g.hands[q.from],q.give);g.hands[t].push(q.give);g.hands[q.from].push(got);}
+    if(take(g.hands[q.from],q.give)){take(g.hands[t],got);g.hands[t].push(q.give);g.hands[q.from].push(got);}}
 }
 // Applies one action for player `me` to game `g` in place. Returns an error message, or null when it worked.
 function act(g,me,a){
@@ -452,14 +474,14 @@ function vTable(){
       setsHTML(g,me,x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null)+
       '<h2>Your stockpile · '+total(g.bank[me])+'</h2>'+
       (g.bank[me].length?'<div class="stack">'+g.bank[me].slice().sort((a,b)=>CARDS[b].val-CARDS[a].val).map(i=>cardHTML(i,{sm:true,fn:paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">Empty. Stockpile rolls so bills do not eat your properties.</p>')+
-      '<h2>Your hand · '+hand.length+'</h2><div class="hand">'+hand.map(i=>cardHTML(i,{
+      '<h2 class="first">Your hand · '+hand.length+'</h2><div class="hand first">'+hand.map(i=>cardHTML(i,{
         sel:ui.sel===i||(ui.disc&&ui.disc.has(i)),
         fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
   }
   return '<header><h1>Quarantine Deal</h1><p>Table <span class="code">'+esc(code)+'</span></p>'+
     '<div class="chips"><span>Deck <b>'+g.deck.length+'</b></span><span>Discards <b>'+g.discard.length+'</b></span></div></header>'+
-    '<div class="notice"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
-    peekHTML(g)+'<div class="grid">'+opp+'</div>'+mine+
+    '<div class="notice play"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
+    peekHTML(g)+mine+'<div class="grid">'+opp+'</div>'+
     '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>';
 }
 function peekHTML(g){
