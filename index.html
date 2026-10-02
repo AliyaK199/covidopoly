@@ -1,126 +1,138 @@
 <title>Quarantine Deal</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Jost:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: a dark card table. Other players' tables on top, yours below, your hand pinned to the bottom edge. One look, dark on purpose. */
+/* Layout: a dark card table. Each player has an outlined board in their own colour: property piles, a divider, then their masks.
+   Your hand is fanned along the bottom edge. One look, dark on purpose. */
 :root{
-  --bg:#141414; --surface:#1e1e1e; --ink:#f4f2ec; --muted:#a9a69d; --line:#3b3b3b;
-  --accent:#2bb8a3; --accent-ink:#04201c; --alert:#ff7b6e;
+  --bg:#141414; --surface:#1b1b1b; --ink:#f4f2ec; --muted:#a9a69d; --line:#3b3b3b;
+  --accent:#2bb8a3; --accent-ink:#04201c; --alert:#ff7b6e; --end:#d94848;
   --display:'Zilla Slab','Rockwell','Georgia',serif;
   --body:'Jost','Century Gothic','Trebuchet MS',sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;padding-inline:16px;padding-block:18px 40px}
-#app{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.tape{height:12px;margin-inline:-16px;background:repeating-linear-gradient(-45deg,var(--accent) 0 14px,var(--tape) 14px 28px)}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;padding-inline:16px;padding-block:14px 40px}
+#app{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
-h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,6vw,40px);line-height:1;margin:0;letter-spacing:.01em}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,6vw,40px);line-height:1;margin:0}
 h2{font-size:14px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0;font-weight:700}
 p{margin:0;max-width:65ch}
 .muted{color:var(--muted)}
-.code{font-family:var(--display);font-weight:700;letter-spacing:.14em;background:var(--accent);color:var(--accent-ink);padding:2px 10px}
+.code{font-family:var(--display);font-weight:700;letter-spacing:.14em;background:var(--accent);color:var(--accent-ink);padding:1px 9px;border-radius:5px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .col{display:flex;flex-direction:column;gap:10px;min-width:0}
-.panel{background:var(--surface);border:1.5px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.panel.turn{border-color:var(--accent);box-shadow:inset 0 5px 0 var(--accent)}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))}
-.btn{font:600 16px var(--body);padding:8px 14px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
-.btn:hover{background:var(--ink);color:var(--bg)}
-.btn.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-ink)}
-.btn.go:hover{filter:brightness(1.08);background:var(--accent);color:var(--accent-ink)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn:focus-visible,.card:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-input{font:500 17px var(--body);padding:8px 10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+.btn{font:700 15px var(--display);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;min-height:44px;border:0;border-radius:9px;background:#3a3a3a;color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.45)}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.45)}
+.btn.go{background:var(--accent);color:var(--accent-ink)}
+.btn.end{background:var(--end)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:focus-visible,.card:focus-visible,input:focus-visible,.handtab:focus-visible{outline:3px solid #fff;outline-offset:2px}
+input{font:500 17px var(--body);padding:9px 12px;border:2px solid var(--line);border-radius:9px;background:#0d0d0d;color:var(--ink);min-width:0}
 #f-code{width:7em;text-transform:uppercase;letter-spacing:.14em}
-.notice{background:var(--surface);border:1.5px solid var(--ink);padding:14px;display:flex;flex-direction:column;gap:12px}
-.notice .big{font-family:var(--display);font-size:23px;font-weight:700;text-wrap:balance}
+.notice{border:2.5px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.big{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.15;text-wrap:balance}
+.next{font-family:var(--display);font-weight:700;font-size:16px}
 .err{color:var(--alert);font-weight:600}
-.chips{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;color:var(--muted)}
-.chips b{color:var(--ink);font-variant-numeric:tabular-nums}
-.sets{display:flex;flex-wrap:wrap;gap:10px}
-.set{display:flex;flex-direction:column;gap:3px}
-.set>span{font-size:13px;font-weight:700;letter-spacing:.04em}
-.set.full>span::after{content:" \2713 full"}
-.stack{display:flex;flex-wrap:wrap;gap:4px}
+.counts{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px}
+.counts b{color:var(--accent)}
+.counts b.red{color:var(--alert)}
+ul{margin:0;padding-left:20px;max-width:65ch}
+li{margin-block:3px}
 .hand{display:flex;flex-wrap:wrap;gap:8px}
-.card{font-family:var(--body);background:var(--band);padding:5px;border:0;border-radius:12px;width:136px;display:flex;color:#f1efe8}
+.log{max-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.log div{border:1.5px solid var(--line);border-radius:10px;padding:5px 11px;font-size:15px;font-weight:600;color:var(--muted)}
+.log div:first-child{color:var(--ink)}
+
+/* status: whose turn, what to do */
+.status{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;border-bottom:2px solid var(--line)}
+
+/* boards */
+.boards{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr))}
+.board{border:2.5px solid var(--pc);border-radius:16px;padding:9px 12px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.board:not(.turn){border-color:color-mix(in srgb,var(--pc) 55%,#141414)}
+.board.turn{box-shadow:0 0 0 1.5px var(--pc),0 0 18px color-mix(in srgb,var(--pc) 35%,transparent)}
+.who{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px;color:var(--pc)}
+.who b{font-family:var(--display);font-size:21px}
+.who span{font-family:var(--display);font-weight:600;font-size:14px}
+.lane{display:flex;gap:10px;align-items:flex-start;overflow-x:auto;padding:4px 3px 8px;min-height:150px}
+.props{display:flex;gap:8px;align-items:flex-start;flex:none;min-width:70px;min-height:134px}
+.pile{display:flex;flex-direction:column;flex:none}
+.pile .card+.card{margin-top:-84px}
+.pile.full::after{content:"full set";font:700 10.5px var(--body);letter-spacing:.08em;text-transform:uppercase;text-align:center;color:var(--accent);padding-top:3px}
+.divide{flex:none;width:2px;height:118px;margin-top:8px;background:#555}
+.fan{display:flex;flex:none;min-width:60px;min-height:134px}
+.fan .card+.card{margin-left:-64px}
+.hint{color:var(--muted);font-size:13.5px;align-self:center;max-width:120px}
+
+/* cards */
+.card{position:relative;flex:none;width:136px;height:192px;border-radius:12px;background:var(--band);padding:5px;border:0;display:flex;color:#f1efe8;font-family:var(--body);text-align:center}
 button.card{cursor:pointer}
-button.card:hover{transform:translateY(-3px)}
-.card .in{background:#242424;border-radius:8px;flex:1;min-width:0;min-height:184px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;position:relative;text-align:center}
-.card .val{position:absolute;top:-5px;left:-5px;width:31px;height:31px;border-radius:50%;background:#242424;border:3px solid var(--tc);display:grid;place-items:center;font-weight:700;font-size:13px}
-.card .lb{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b9b6ad;padding-left:20px;min-height:14px}
+.card .in{flex:1;min-width:0;background:#242424;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;overflow:hidden}
+.card.solid{padding:0;box-shadow:inset 0 0 0 2.5px #ece9df}
+.card.solid .in{background:none;color:#fff;border-radius:12px}
+.card .val{position:absolute;top:5px;left:5px;width:29px;height:29px;border-radius:50%;background:#1b1b1b;color:#fff;border:2.5px solid var(--tc);display:grid;place-items:center;font-weight:700;font-size:11.5px;z-index:1}
+.card .flip{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:6px;background:#fff;color:#111;display:grid;place-items:center;font-size:13px;font-weight:700;line-height:1}
+.card .lb{min-height:22px;margin-left:28px;display:flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:lowercase;color:#c9c6bd}
+.card.solid .lb{color:#fff;background:rgba(0,0,0,.32);border-radius:4px;padding:0 7px;align-self:center}
 .card .nm{font-family:var(--display);font-weight:700;font-size:17px;line-height:1.02;color:var(--tc);text-transform:uppercase;overflow-wrap:anywhere}
+.card.solid .nm{color:#fff}
 .card .art{width:62px;height:62px;margin-block:auto;flex:none}
 .card .ds{font-size:13px;line-height:1.2;margin-top:auto}
-.card.money .nm{font-size:44px;margin-block:auto}
-/* property and rent cards are filled with their set colour, so a rent card visibly matches the sets it charges for */
-.card.solid .in{background:var(--band);color:#1b1b1b;box-shadow:inset 0 0 0 2px rgba(0,0,0,.28)}
-.card.solid .nm,.card.solid .lb{color:#1b1b1b}
-.card.solid .ds{font-weight:600}
-.card.solid .val{border-color:#f1efe8;color:#f1efe8}
-.lad{display:flex;flex-direction:column;gap:2px;margin-block:auto;width:100%;padding-inline:10px;font-weight:700;font-size:13px}
-.lad span{display:flex;justify-content:space-between;border-bottom:1px dashed rgba(0,0,0,.4)}
-.or{margin-block:auto;background:#1b1b1b;color:#f1efe8;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 9px;border-radius:9px}
-.card.sm .lad,.card.sm .or,.card.sm .or+.nm{display:none}
-.card.sm{width:100px;border-radius:9px;padding:4px}
-.card.sm .in{min-height:0;padding:5px 4px 6px;border-radius:6px}
-.card.sm .nm{font-size:13.5px}
-.card.sm .val{width:23px;height:23px;font-size:11px;border-width:2px}
-.card.sm .art,.card.sm .ds{display:none}
-.card.sm.money .nm{font-size:22px}
-.card.sel{outline:4px solid var(--accent);outline-offset:1px;transform:translateY(-5px)}
-.log{font-size:15px;color:var(--muted);max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
-.log div:first-child{color:var(--ink);font-weight:600}
-.notice.play{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;max-height:55vh;overflow-y:auto;box-shadow:0 8px 16px rgba(0,0,0,.22)}
-.zone{border:1.5px dashed var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
-summary{cursor:pointer;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
-details[open]>summary{margin-bottom:8px}
-.dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--c);margin-left:5px;vertical-align:-1px}
-.dot.on{background:var(--c)}
-.spacer{height:256px}
-.spacer.min{height:60px}
+.card.solid .ds{background:rgba(255,255,255,.88);color:#111;font-weight:600;border-radius:9px;padding:3px 6px;font-size:12px}
+.lad{display:flex;flex-direction:column;gap:3px;margin-block:auto;width:100%;padding-inline:8px;font-weight:700;font-size:13px}
+.lad span{display:flex;justify-content:space-between;background:rgba(255,255,255,.3);border-radius:9px;padding:0 9px}
+.or{margin-block:auto;background:#1b1b1b;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 9px;border-radius:9px}
+.rc{margin-block:auto;width:70px;height:70px;flex:none;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;font:700 19px var(--display);text-transform:uppercase}
+.card.money .nm{font-size:54px;margin-top:auto}
+.card.money .unit{font:700 13px var(--display);letter-spacing:.06em;text-transform:uppercase;margin-bottom:auto}
+.card.sel{outline:4px solid #fff;outline-offset:1px;transform:translateY(-10px);z-index:3}
+.card.sm{width:92px;height:134px;border-radius:9px;padding:4px}
+.card.sm .in{padding:5px 4px;gap:3px;border-radius:6px}
+.card.sm.solid{padding:0;box-shadow:inset 0 0 0 2px #ece9df}
+.card.sm.solid .in{border-radius:9px}
+.card.sm .val{top:4px;left:4px;width:22px;height:22px;font-size:9px;border-width:2px}
+.card.sm .flip{width:18px;height:18px;font-size:11px;top:4px;right:4px}
+.card.sm .lb{min-height:18px;margin-left:22px;font-size:8.5px;padding-inline:4px}
+.card.sm .nm{font-size:10.5px}
+.card.sm .lad{font-size:9.5px;gap:2px;padding-inline:4px}
+.card.sm .lad span{padding:0 6px}
+.card.sm .art{width:44px;height:44px}
+.card.sm .ds,.card.sm .or,.card.sm .or+.nm{display:none}
+.card.sm .rc{width:44px;height:44px;font-size:12px}
+.card.sm.money .nm{font-size:34px}
+.card.sm.money .unit{font-size:9.5px}
+
+/* hand */
+.spacer{height:262px}
+.spacer.min{height:64px}
+.handbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:linear-gradient(180deg,rgba(20,20,20,0),var(--bg) 26px);padding:22px 16px calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:2px}
 .handtab{display:flex;justify-content:space-between;gap:10px;width:100%;min-height:36px;align-items:center;background:none;border:0;padding:0;cursor:pointer;font:700 14px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 .handtab span:last-child{color:var(--ink)}
-.handtab:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.handbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:2px solid var(--ink);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
-.handbar .hand{flex-wrap:nowrap;overflow-x:auto;padding:6px 2px 6px}
-.handbar .card{flex:none;width:106px}
-.handbar .card .in{min-height:150px;padding:7px 4px}
+.handbar .hand{flex-wrap:nowrap;gap:0;overflow-x:auto;padding:14px 4px 8px}
+.handbar .card{width:114px;height:166px}
+.handbar .card+.card{margin-left:-30px}
 .handbar .card .nm{font-size:14px}
-.handbar .card .lb{font-size:10px;letter-spacing:.04em}
-.handbar .card .ds{font-size:11.5px}
-.handbar .card .art{width:42px;height:42px}
-.handbar .card.money .nm{font-size:36px}
+.handbar .card .lad{font-size:11.5px}
+.handbar .card .art{width:46px;height:46px}
+.handbar .card .ds{font-size:11px;padding:2px 4px}
+.handbar .card .rc{width:56px;height:56px;font-size:15px}
+.handbar .card.money .nm{font-size:46px}
+
+/* dragging */
 [data-drag]{touch-action:pan-x;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.95;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:.95;box-shadow:0 10px 24px rgba(0,0,0,.5)}
 .lifting{opacity:.25}
-body.dragging [data-drop]{outline:2px dashed var(--accent);outline-offset:-3px}
-body.dragging [data-drop].over{outline-style:solid;outline-width:4px;box-shadow:inset 0 0 0 999px rgba(43,184,163,.22)}
+body.dragging [data-drop]{outline:2px dashed rgba(255,255,255,.35);outline-offset:-3px;border-radius:12px}
+body.dragging [data-drop].over{outline:3px solid #fff;background-color:rgba(255,255,255,.08)}
 body.dragging{user-select:none;-webkit-user-select:none}
 @media (max-width:560px){
   body{font-size:16px}
-  #app{gap:14px}
-  .panel,.notice{padding:10px}
-  .notice .big{font-size:18px}
-  .btn{min-height:44px}
-  .notice .row .btn{flex:1 1 auto}
-  .stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .stack .card{width:auto}
-  .sets{flex-direction:column}
-  .card .in{min-height:160px;padding:7px 4px}
-  .card.sm .in{min-height:0}
-  .card .nm{font-size:14px}
-  .card .lb{font-size:10px;letter-spacing:.04em}
-  .card.sm .nm{font-size:12.5px}
-  .card .ds{font-size:12px}
-  .card .art{width:46px;height:46px}
-  .card.money .nm{font-size:38px}
-  .card.sm.money .nm{font-size:20px}
+  .big{font-size:20px}
+  .status .row .btn{flex:1 1 auto}
 }
-ul{margin:0;padding-left:20px;max-width:65ch}
-li{margin-block:3px}
-@media (prefers-reduced-motion:reduce){button.card:hover,.card.sel{transform:none}}
+@media (prefers-reduced-motion:reduce){.card.sel{transform:none}.btn:active{transform:none}}
 </style>
 
 <div id="app"></div>
@@ -128,16 +140,16 @@ li{margin-block:3px}
 <script>
 /*ENGINE*/
 const SETS={
-  pantry:{n:'Pantry',size:2,rent:[1,2],val:1,col:'#c08a62',ink:'#fff',cards:['Canned Beans','Instant Noodles']},
-  office:{n:'Home Office',size:3,rent:[1,2,3],val:1,col:'#8ccdec',ink:'#102a36',cards:['Kitchen Table Desk','Couch Office','Ironing Board Desk']},
-  hobbies:{n:'New Hobbies',size:3,rent:[1,2,4],val:2,col:'#e79cc0',ink:'#3a1026',cards:['Sourdough Starter','Banana Bread','1000-Piece Puzzle']},
-  streaming:{n:'Binge List',size:3,rent:[1,3,5],val:2,col:'#f0903f',ink:'#331703',cards:['True Crime Docuseries','Baking Show','Sitcom Rewatch']},
-  essentials:{n:'Essentials',size:3,rent:[2,3,6],val:3,col:'#f0605a',ink:'#fff',cards:['Toilet Paper','Hand Sanitizer','Disinfecting Wipes']},
-  outdoors:{n:'Fresh Air',size:3,rent:[2,4,6],val:3,col:'#f1d040',ink:'#322a02',cards:['Balcony','Backyard','Walk Around the Block']},
-  fitness:{n:'Home Gym',size:3,rent:[2,4,7],val:4,col:'#4fb873',ink:'#fff',cards:['Yoga Mat','Dumbbells','Stationary Bike']},
-  lab:{n:'Clinic',size:2,rent:[3,8],val:4,col:'#6d8ff0',ink:'#fff',cards:['Test Kits','Vaccine Appointment']},
-  delivery:{n:'Deliveries',size:4,rent:[1,2,3,4],val:2,col:'#a3acb7',ink:'#fff',cards:['Grocery Delivery','Takeout','Parcel Drop','Pharmacy Run']},
-  wifi:{n:'Connection',size:2,rent:[1,2],val:2,col:'#bccb6c',ink:'#262c08',cards:['Wi-Fi Router','Webcam']}
+  pantry:{n:'Brown',size:2,rent:[1,2],val:1,col:'#5c3d31',cards:['Wuhan Market','Lockdown Lane']},
+  office:{n:'Light Blue',size:3,rent:[1,2,3],val:1,col:'#27a8de',cards:['G.W. Zoo','Big Cat Rescue','Myrtle Beach Safari']},
+  hobbies:{n:'Pink',size:3,rent:[1,2,4],val:2,col:'#c462d8',cards:['Ventilator View','N-95 Avenue','Emergency Room Road']},
+  streaming:{n:'Orange',size:3,rent:[1,3,5],val:2,col:'#ec8537',cards:['Stock Market Valley','SBA Loan Street','Unemployment Road']},
+  essentials:{n:'Red',size:3,rent:[2,3,6],val:3,col:'#c9434a',cards:['New York Hospital','Milan Hospital','Madrid Hospital']},
+  outdoors:{n:'Yellow',size:3,rent:[2,4,6],val:3,col:'#e2a52c',cards:['Cuomo Circle','Fauci Fairway','Trump Terrace']},
+  fitness:{n:'Green',size:3,rent:[2,4,7],val:4,col:'#1d6f66',cards:['Tik Tok Terrace','Zoom Alley','Netflix Canyon']},
+  lab:{n:'Blue',size:2,rent:[3,8],val:4,col:'#3b3ba8',cards:['Immunity Place','Vaccine Valley']},
+  delivery:{n:'Cruise Ship',size:4,rent:[1,2,3,4],val:1,col:'#060606',cards:['Coral Princess','Grand Princess','Diamond Princess','Regal Princess']},
+  wifi:{n:'Fed. Agency',size:2,rent:[1,2],val:2,col:'#45ad85',cards:['Federal Reserve','CDC']}
 };
 // name, effect, value, copies, frame colour, face
 const ACTIONS={
@@ -163,8 +175,8 @@ const CARDS=(function(){
   for(const s in SETS)SETS[s].cards.forEach(nm=>add(1,{k:'prop',set:s,name:nm,val:SETS[s].val}));
   [['lab','fitness',4],['office','pantry',1],['hobbies','streaming',2],['hobbies','streaming',2],['essentials','outdoors',3],
    ['essentials','outdoors',3],['fitness','delivery',4],['office','delivery',4],['wifi','delivery',2]]
-    .forEach(([a,b,v])=>add(1,{k:'wild',sets:[a,b],val:v,name:'Flex Space'}));
-  add(2,{k:'wild',sets:null,val:0,name:'Spare Room'});
+    .forEach(([a,b,v])=>add(1,{k:'wild',sets:[a,b],val:v,name:'Wildcard'}));
+  add(2,{k:'wild',sets:null,val:0,name:'Wildcard'});
   [['lab','fitness'],['essentials','outdoors'],['hobbies','streaming'],['office','pantry'],['wifi','delivery']]
     .forEach(p=>add(2,{k:'rent',sets:p,val:1,name:'Rent'}));
   add(3,{k:'rent',sets:null,val:3,name:'Rent'});
@@ -235,7 +247,7 @@ function act(g,me,a){
     if(q.nope%2===1){say(g,who+' let it go.');}
     else if(q.type==='pay'){
       const ids=a.pay||[],can=payables(g,me);
-      if(new Set(ids).size!==ids.length||!ids.every(i=>can.includes(i)))return 'Pay with cards from your stockpile or properties.';
+      if(new Set(ids).size!==ids.length||!ids.every(i=>can.includes(i)))return 'Pay with your masks or properties.';
       const sum=ids.reduce((s,i)=>s+CARDS[i].val,0);
       if(sum<q.amount&&ids.length<can.length)return 'That does not cover '+q.amount+'.';
       ids.forEach(id=>{const u=g.ups[me].findIndex(x=>x.id===id);if(u>=0){g.ups[me].splice(u,1);g.bank[q.from].push(id);}else if(take(g.bank[me],id))g.bank[q.from].push(id);else{const i=g.props[me].findIndex(x=>x.id===id);g.props[q.from].push(g.props[me].splice(i,1)[0]);}});
@@ -259,8 +271,8 @@ function act(g,me,a){
   if(g.plays>=3)return 'You have already played 3 cards.';
   const others=g.order.filter(p=>p!==me);
   if(a.t==='bank'){
-    if(c.k==='prop'||c.k==='wild')return 'Properties cannot go in the stockpile.';
-    take(hand,c.id);g.bank[me].push(c.id);g.plays++;say(g,who+' stockpiled '+c.val+'.');return null;
+    if(c.k==='prop'||c.k==='wild')return 'Properties cannot be played as masks.';
+    take(hand,c.id);g.bank[me].push(c.id);g.plays++;say(g,who+' played '+c.val+'M as masks.');return null;
   }
   if(a.t==='prop'){
     if(!validColor(c,a.color))return 'Pick a set for that card.';
@@ -332,35 +344,30 @@ function germ(col,mood){
   const face={happy:'<path d="M24 37q8 8 16 0"/>',sad:'<path d="M24 42q8-7 16 0"/><path d="M20 23l8-3M44 23l-8-3"/>',angry:'<path d="M25 40h14"/><path d="M20 21l9 4M44 21l-9 4"/>',cool:'<path d="M26 39q6 4 12 0"/>'}[mood];
   return '<svg class="art" viewBox="0 0 64 64" aria-hidden="true">'+n+'<circle cx="32" cy="32" r="19" fill="'+col+'"/>'+eyes+'<g fill="none" stroke="#1b1b1b" stroke-width="2.5" stroke-linecap="round">'+face+'</g></svg>';
 }
+const STRIPES='repeating-linear-gradient(135deg,'+Object.keys(SETS).map((k,i)=>SETS[k].col+' '+i*10+'% '+(i+1)*10+'%').join(',')+')';
+const MASK={1:'#8fbdb4',2:'#b07f68',3:'#4fae9c',4:'#6c95c8',5:'#7a5fa8',10:'#d9a93a'},PCOL=['#2bb8a3','#f0506a','#b57bee','#e9b949','#5aa7f0'];
 function cardHTML(id,o){
-  o=o||{};const c=CARDS[id];let band='#cfc9b4',tc=PALE,label='',ds='',mid='',name=c.name;
-  const solid=c.k==='prop'||c.k==='wild'||c.k==='rent';
-  // two-set cards are split top and bottom, one colour per set
-  const two=s=>'linear-gradient(180deg,'+SETS[s[0]].col+' 50%,'+SETS[s[1]].col+' 50%)';
-  const ladder=s=>'<span class="lad">'+SETS[s].rent.map((r,i)=>'<span><b>'+(i+1)+'</b>'+r+'M</span>').join('')+'</span>';
-  const half=(word,s)=>'<span class="or">'+word+'</span><span class="nm">'+esc(SETS[s].n)+'</span>';
-  if(c.k==='money'){label='Masks';name=c.val+'M';ds='Stockpile it to pay rent.';}
-  else if(c.k==='prop'){band=SETS[c.set].col;label=SETS[c.set].n;mid=ladder(c.set);}
+  o=o||{};const c=CARDS[id],col=k=>SETS[k].col;let band='',tc=PALE,label='',ds='',mid='',name=c.name;
+  const solid=c.k!=='action';
+  const ladder=k=>'<span class="lad">'+SETS[k].rent.map((r,i)=>'<span><b>'+(i+1)+'</b>'+r+'M</span>').join('')+'</span>';
+  if(c.k==='money'){band=MASK[c.val];mid='<span class="unit">'+(c.val===1?'Mask':'Masks')+'</span>';}
+  else if(c.k==='prop'){band=col(c.set);label=SETS[c.set].n;mid=ladder(c.set);}
   else if(c.k==='wild'){
-    if(o.color){band=SETS[o.color].col;label=SETS[o.color].n;name='Wild';mid=ladder(o.color);}
-    else if(c.sets){band=two(c.sets);label='Wild property';name=SETS[c.sets[0]].n;mid=half('or',c.sets[1]);ds='Goes in either set. Move it later if you like.';}
-    else{band=RAINBOW;label='Wild property';name='Any set';mid=germ(PALE,'cool');ds='Goes in any set. Move it later if you like.';}
+    if(o.color){ // on a board: its current colour, with a strip of what else it can be
+      const other=c.sets?col(c.sets[0]===o.color?c.sets[1]:c.sets[0]):null;
+      band=other?'linear-gradient(180deg,'+col(o.color)+' 82%,'+other+' 82%)':'linear-gradient(180deg,'+col(o.color)+' 82%,transparent 82%),'+STRIPES;
+      label=SETS[o.color].n;mid=ladder(o.color);
+    }else if(c.sets){band='linear-gradient(180deg,'+col(c.sets[0])+' 50%,'+col(c.sets[1])+' 50%)';label='wildcard';name=SETS[c.sets[0]].n;mid='<span class="or">or</span><span class="nm">'+esc(SETS[c.sets[1]].n)+'</span>';}
+    else{band=STRIPES;label='rainbow';ds='Goes in any colour.';}
   }else if(c.k==='rent'){
-    if(c.sets){band=two(c.sets);label='Rent · all players';name=SETS[c.sets[0]].n;mid=half('rent',c.sets[1]);ds='Everyone pays you rent on one of these.';}
-    else{band=RAINBOW;label='Rent · one player';name='Any set';mid=germ(PALE,'angry');ds='One player pays you rent on any set you own.';}
-  }else{const A=ACTIONS[c.act];band=tc=A[4];label=c.act==='house'||c.act==='hotel'?'Upgrade':'Action';ds=A[1];mid=germ(tc,A[5]);}
+    name='';mid='<span class="rc">Rent</span>';
+    if(c.sets){band='linear-gradient(135deg,'+col(c.sets[0])+' 50%,'+col(c.sets[1])+' 50%)';label=SETS[c.sets[0]].n+' / '+SETS[c.sets[1]].n;ds='Charges all players rent of either colour.';}
+    else{band=STRIPES;label='rainbow';ds='Charges one player rent.';}
+  }else{const A=ACTIONS[c.act];band=tc=A[4];label=c.act==='house'||c.act==='hotel'?'upgrade':'action';ds=A[1];mid=germ(tc,A[5]);}
   const tag=o.fn?'button':'div';
-  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(solid?'solid ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+(o.attr||'')+
-    ' style="--band:'+band+';--tc:'+tc+'"><span class="in">'+(c.k==='money'?'':'<span class="val">'+c.val+'M</span>')+
-    '<span class="lb">'+esc(label)+'</span><span class="nm">'+esc(name)+'</span>'+mid+'<span class="ds">'+esc(ds)+'</span></span></'+tag+'>';
-}
-function setsHTML(g,p,fn,canMove){
-  const out=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>{
-    const n=count(g,p,s),full=n>=SETS[s].size;
-    return '<div class="set'+(full?' full':'')+'" data-drop="set:'+p+':'+s+'"><span>'+esc(SETS[s].n)+' '+n+'/'+SETS[s].size+' · rent '+rentFor(g,p,s)+'</span><div class="stack">'+
-      g.props[p].filter(x=>x.color===s).concat(g.ups[p].filter(u=>u.color===s)).map(x=>cardHTML(x.id,{sm:true,color:x.color,attr:' data-drop="card:'+p+':'+x.id+'"'+(canMove&&CARDS[x.id].k==='wild'?' data-drag="w'+x.id+'"':''),fn:fn?fn(x):null,sel:ui.pay.has(x.id)||ui.recolor===x.id})).join('')+'</div></div>';
-  });
-  return out.length?'<div class="sets">'+out.join('')+'</div>':'<p class="muted">No properties yet.</p>';
+  return '<'+tag+' class="card '+c.k+' '+(solid?'solid ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+(o.attr||'')+
+    ' style="--band:'+band+';--tc:'+tc+'"><span class="val">'+c.val+'M</span>'+(o.flip?'<span class="flip" aria-hidden="true">⇅</span>':'')+'<span class="in">'+
+    (c.k==='money'?'':'<span class="lb">'+esc(label)+'</span>')+(name?'<span class="nm">'+esc(name)+'</span>':'')+mid+(ds?'<span class="ds">'+esc(ds)+'</span>':'')+'</span></'+tag+'>';
 }
 const total=ids=>ids.reduce((s,i)=>s+CARDS[i].val,0);
 
@@ -378,9 +385,9 @@ function vHome(){
 }
 function rulesHTML(){
   return '<div class="col"><h2>How to play</h2><ul>'+
-  '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards by dragging them from your hand onto a table.</li>'+
-  '<li>Put properties on the table to build sets. Put masks (M) and unwanted action cards in your stockpile to pay rent.</li>'+
-  '<li>Rent cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
+  '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards by dragging them from your hand onto a board.</li>'+
+  '<li>Put properties on the table to build sets. Put masks (M) and unwanted action cards on the masks side of your board to pay rent.</li>'+
+  '<li>Rent cards charge rent on a set you own. Rent is paid with masks or properties, and nobody gives change.</li>'+
   '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
   '<li>Toilet Paper Stash and Social Distancing raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
   '<li>End your turn with 7 cards or fewer. There are two ways to win: be first to three full sets, or first to own a property in all ten colours.</li></ul></div>';
@@ -416,7 +423,7 @@ function controls(g){
     if(q.nope%2===1){out.push(btn('Let it go',()=>commit({t:'respond',r:'ok'}),'go'));}
     else if(q.type==='pay'){
       const can=payables(g,me),sum=total([...ui.pay]),ok=sum>=q.amount||ui.pay.size===can.length;
-      out.push('<p>Tap cards in your stockpile or properties to pay. Selected: <b>'+sum+'</b> of '+q.amount+'.</p>');
+      out.push('<p>Tap your masks or properties to pay. Selected: <b>'+sum+'</b> of '+q.amount+'.</p>');
       out.push(btn(sum>=q.amount?'Pay '+sum:ok?'Pay everything you have':'Pay',()=>commit({t:'respond',r:'ok',pay:[...ui.pay]}),'go',!ok));
     }else out.push(btn('Accept',()=>commit({t:'respond',r:'ok'}),'go'));
     if(hasNope)out.push(btn(q.nope%2?'Counter with No! I\'m in Quarantine':'Play No! I\'m in Quarantine',()=>commit({t:'respond',r:'nope'})));
@@ -436,8 +443,8 @@ function controls(g){
     return out.join('');
   }
   if(ui.sel!=null&&left>0)out.push(sheet(g,CARDS[ui.sel])+btn('Cancel',()=>{resetSel();render();}));
-  else if(left>0)out.push('<p class="muted">Drag a card from your hand onto a table: your own for properties and stockpile, another player\'s to hit them, or here for other actions.</p>');
-  out.push(btn('End turn',()=>{if(over>0){ui.sel=null;ui.handMin=false;ui.disc=new Set();render();}else commit({t:'end'});},left>0&&ui.sel!=null?'':'go'));
+  else if(left>0)out.push('<p class="muted">Drag a card from your hand onto a board: yours for properties and masks, another player\'s to hit them, or up here for other actions.</p>');
+  out.push(btn('End turn',()=>{if(over>0){ui.sel=null;ui.handMin=false;ui.disc=new Set();render();}else commit({t:'end'});},'end'));
   return out.join('');
 }
 function sheet(g,c){
@@ -483,39 +490,42 @@ function sheet(g,c){
     got.forEach(i=>out.push(btn('Take back '+CARDS[i].name,()=>play({pick:i}),'go')));
   }else if(c.act==='nope')out.push('<p class="muted">Keep this to cancel an action played against you.</p>');
   else out.push('<p class="muted">Play this together with a Rent card.</p>');
-  if(c.k!=='prop'&&c.k!=='wild')out.push(btn('Stockpile it as '+c.val,()=>commit({t:'bank',card:id})));
+  if(c.k!=='prop'&&c.k!=='wild')out.push(btn('Play as masks: '+c.val+'M',()=>commit({t:'bank',card:id})));
   return out.join('');
 }
 function vTable(){
   const g=game,inGame=g.order.includes(me),actor=actorOf(g),turnP=g.order[g.turn];
   const myTurn=inGame&&actor===me&&!g.pending&&g.status==='playing';
   const paying=inGame&&actor===me&&g.pending&&g.pending.type==='pay'&&g.pending.nope%2===0;
-  const big=g.status==='over'?pname(g,g.winner)+' wins with '+(g.how||'three full sets')+'.':
-    g.pending?pendingText(g):myTurn?'Your turn. '+(3-g.plays)+' play'+(3-g.plays===1?'':'s')+' left.':pname(g,turnP)+"'s turn.";
+  const pc=p=>PCOL[Math.max(0,g.order.indexOf(p))%PCOL.length],who=p=>'<b style="color:'+pc(p)+'">'+esc(pname(g,p))+'</b>';
+  const left=3-g.plays,nextP=g.order[(g.turn+1)%g.order.length];
+  const big=g.status==='over'?who(g.winner)+' wins with '+esc(g.how||'three full sets')+'!':
+    g.pending?esc(pendingText(g)):who(turnP)+' has <b style="color:'+pc(turnP)+'">'+left+'</b> move'+(left===1?'':'s')+' left';
   const togglePay=id=>()=>{ui.pay.has(id)?ui.pay.delete(id):ui.pay.add(id);render();};
-  const table=p=>{
-    const mineT=p===me,bank=g.bank[p].slice().sort((a,b)=>CARDS[b].val-CARDS[a].val);
-    const dots=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>'<i class="dot'+(count(g,p,s)>=SETS[s].size?' on':'')+'" style="--c:'+SETS[s].col+'"></i>').join('');
-    const fn=mineT?x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null:null;
-    return '<section class="panel'+(actor===p?' turn':'')+'" data-drop="player:'+p+'">'+
-      '<h2>'+(mineT?'Your table':esc(pname(g,p)))+' · '+complete(g,p).length+' of 3 sets · '+colours(g,p)+' of 10 colours</h2>'+
-      (mineT?'':'<div class="chips"><span>Cards in hand <b>'+g.hands[p].length+'</b></span></div>')+
-      '<div class="zone" data-drop="bank:'+p+'"><h2>Stockpile · '+total(bank)+'</h2>'+
-        (bank.length?'<div class="stack">'+bank.map(i=>cardHTML(i,{sm:true,fn:mineT&&paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">'+(mineT?'Drop masks and spare action cards here.':'Empty.')+'</p>')+'</div>'+
-      '<div class="zone" data-drop="props:'+p+'"><h2>Properties · '+g.props[p].length+dots+'</h2>'+
-        (g.props[p].length?setsHTML(g,p,fn,mineT&&myTurn&&!ui.disc):'<p class="muted">'+(mineT?'Drop property cards here.':'None yet.')+'</p>')+'</div></section>';
+  const board=p=>{
+    const mineT=p===me,canMove=mineT&&myTurn&&!ui.disc,bank=g.bank[p].slice().sort((a,b)=>CARDS[a].val-CARDS[b].val);
+    const tap=x=>!mineT?null:paying&&CARDS[x.id].val>0?togglePay(x.id):canMove&&CARDS[x.id].k==='wild'?()=>{
+      const c=CARDS[x.id];if(c.sets)commit({t:'recolor',card:c.id,color:c.sets[0]===x.color?c.sets[1]:c.sets[0]});else{ui.recolor=ui.recolor===c.id?null:c.id;ui.sel=null;render();}}:null;
+    const piles=Object.keys(SETS).filter(k=>count(g,p,k)).map(k=>'<div class="pile'+(count(g,p,k)>=SETS[k].size?' full':'')+'" data-drop="set:'+p+':'+k+'">'+
+      g.props[p].filter(x=>x.color===k).concat(g.ups[p].filter(u=>u.color===k)).map(x=>{const w=CARDS[x.id].k==='wild';
+        return cardHTML(x.id,{sm:true,color:x.color,fn:tap(x),sel:ui.pay.has(x.id)||ui.recolor===x.id,flip:w&&canMove,
+          attr:' data-drop="card:'+p+':'+x.id+'"'+(w&&canMove?' data-drag="w'+x.id+'"':'')});}).join('')+'</div>').join('');
+    return '<section class="board'+(actor===p?' turn':'')+'" style="--pc:'+pc(p)+'" data-drop="player:'+p+'">'+
+      '<div class="who"><b>'+esc(pname(g,p))+(mineT?' (you)':'')+'</b><span>'+g.hands[p].length+' cards in hand | '+total(bank)+' Masks | '+complete(g,p).length+'/3 sets</span></div>'+
+      '<div class="lane"><div class="props" data-drop="props:'+p+'">'+(piles||'<span class="hint">'+(mineT?'Drop properties here':'No properties yet')+'</span>')+'</div><i class="divide"></i>'+
+      '<div class="fan" data-drop="bank:'+p+'">'+(bank.length?bank.map(i=>cardHTML(i,{sm:true,fn:mineT&&paying?togglePay(i):null,sel:ui.pay.has(i)})).join(''):'<span class="hint">'+(mineT?'Drop masks here':'No masks')+'</span>')+'</div></div></section>';
   };
   let handbar='';
   if(inGame&&g.status==='playing'){
     const hand=g.hands[me],canDrag=myTurn&&!ui.disc;
-    handbar='<div class="spacer'+(ui.handMin?' min':'')+'"></div><div class="handbar"><button class="handtab" '+on(()=>{ui.handMin=!ui.handMin;render();})+' aria-expanded="'+!ui.handMin+'"><span>Your hand · '+hand.length+(canDrag&&!ui.handMin?' · drag a card up to play it':'')+'</span><span>'+(ui.handMin?'Show ▲':'Hide ▼')+'</span></button><div class="hand"'+(ui.handMin?' hidden':'')+'>'+hand.map(i=>cardHTML(i,{
+    handbar='<div class="spacer'+(ui.handMin?' min':'')+'"></div><div class="handbar"><button class="handtab" '+on(()=>{ui.handMin=!ui.handMin;render();})+' aria-expanded="'+!ui.handMin+'"><span>Your hand · '+hand.length+'</span><span>'+(ui.handMin?'Show ▲':'Hide ▼')+'</span></button><div class="hand"'+(ui.handMin?' hidden':'')+'>'+hand.map(i=>cardHTML(i,{
       sel:ui.sel===i||(ui.disc&&ui.disc.has(i)),attr:canDrag?' data-drag="'+i+'"':'',
       fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
   }
-  return '<header><h1>Quarantine Deal</h1><p>Table <span class="code">'+esc(code)+'</span></p>'+
-    '<div class="chips"><span>Deck <b>'+g.deck.length+'</b></span><span>Discards <b>'+g.discard.length+'</b></span></div></header>'+
-    '<div class="notice play" data-drop="pile"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
-    peekHTML(g)+'<div class="grid">'+g.order.filter(p=>p!==me).map(table).join('')+'</div>'+(inGame?table(me):'')+
+  return '<div class="counts"><span>table <span class="code">'+esc(code)+'</span></span><span>deck: <b>'+g.deck.length+'</b></span><span>discard-pile: <b class="red">'+g.discard.length+'</b></span></div>'+
+    '<div class="status" data-drop="pile"><p class="big">'+big+'</p>'+(g.status==='playing'&&!g.pending?'<p class="next">'+who(nextP)+' is up next!</p>':'')+
+      '<div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
+    peekHTML(g)+'<div class="boards">'+g.order.filter(p=>p!==me).map(board).join('')+'</div>'+(inGame?board(me):'')+
     '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>'+handbar;
 }
 // A hand card was dropped on a zone. Play it outright when the drop says everything; otherwise open the chooser for what is left to decide.
@@ -600,7 +610,7 @@ function peekHTML(g){
   if(!g.peek||g.peek.by!==me)return '';
   if(g.peek.n!==ui.peekN){ui.peekN=g.peek.n;ui.peekUntil=Date.now()+10000;setTimeout(render,10100);}
   if(Date.now()>=ui.peekUntil)return '';
-  return '<div class="panel turn"><h2>'+esc(pname(g,g.peek.target))+"'s hand · closes in 10 seconds</h2><div class=\"hand\">"+g.hands[g.peek.target].map(i=>cardHTML(i,{sm:true})).join('')+'</div></div>';
+  return '<section class="board turn" style="--pc:#fff"><div class="who"><b>'+esc(pname(g,g.peek.target))+"'s hand</b><span>closes in 10 seconds</span></div><div class=\"lane\">"+g.hands[g.peek.target].map(i=>cardHTML(i,{sm:true})).join('')+'</div></section>';
 }
 function render(){
   handlers=[];
