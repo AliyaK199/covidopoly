@@ -33,6 +33,8 @@ input{font:500 17px var(--body);padding:9px 12px;border:2px solid var(--line);bo
 #f-code{width:7em;text-transform:uppercase;letter-spacing:.14em}
 .notice{border:2.5px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .big{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.15;text-wrap:balance}
+.clock{font-family:var(--display);font-weight:700;font-size:21px;color:var(--accent);font-variant-numeric:tabular-nums}
+.clock.low{color:var(--alert)}
 .next{font-family:var(--display);font-weight:700;font-size:16px}
 .err{color:var(--alert);font-weight:600}
 .counts{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px}
@@ -201,9 +203,9 @@ function draw(g,p,n){for(let i=0;i<n;i++){if(!g.deck.length){g.deck=shuffle(g.di
 function startTurn(g){const p=g.order[g.turn];g.plays=0;
   if(g.skip[p]){g.skip[p]=false;say(g,pname(g,p)+' has a delayed shipment and draws nothing.');}else draw(g,p,g.hands[p].length?2:5);}
 function played(g,id,p){g.played.push(id);if(g.played.length>3)g.played.shift();g.last[p]=id;}
-function nextTurn(g){g.pending=null;g.turn=(g.turn+1)%g.order.length;startTurn(g);}
-function newGame(players,host){
-  const g={status:'playing',host:host,v:1,players:players,order:players.map(p=>p.id),turn:0,plays:0,
+function nextTurn(g){g.pending=null;g.tn=(g.tn||1)+1;g.turn=(g.turn+1)%g.order.length;startTurn(g);}
+function newGame(players,host,timer){
+  const g={status:'playing',host:host,v:1,players:players,order:players.map(p=>p.id),turn:0,plays:0,timer:timer||0,tn:1,
     deck:shuffle(CARDS.map(c=>c.id)),discard:[],hands:{},bank:{},props:{},ups:{},skip:{},last:{},played:[],peek:null,pending:null,log:[],winner:null};
   g.order.forEach(p=>{g.hands[p]=[];g.bank[p]=[];g.props[p]=[];g.ups[p]=[];g.skip[p]=false;draw(g,p,5);});
   say(g,'Cards dealt. '+pname(g,g.order[0])+' goes first.');
@@ -234,6 +236,11 @@ function applyEffect(g,q,t){
 // Applies one action for player `me` to game `g` in place. Returns an error message, or null when it worked.
 function act(g,me,a){
   if(g.status!=='playing')return 'The game is not running.';
+  if(a.t==='timeout'){ // the turn clock ran out: any seated player's page may end the turn
+    if(!g.timer||a.tn!==g.tn||g.pending||!g.order.includes(me))return 'The clock is not up.';
+    const p=g.order[g.turn],h=g.hands[p];while(h.length>HAND_LIMIT)g.discard.push(h.pop());
+    say(g,pname(g,p)+' ran out of time.');nextTurn(g);say(g,pname(g,g.order[g.turn])+"'s turn.");return null;
+  }
   if(a.t==='skip'){if(me!==g.host)return 'Only the host can skip.';say(g,'The host skipped '+pname(g,actorOf(g))+'.');nextTurn(g);return null;}
   if(actorOf(g)!==me)return 'It is not your move.';
   const q=g.pending,hand=g.hands[me],who=pname(g,me);
@@ -390,6 +397,7 @@ function rulesHTML(){
   '<li>Rent cards charge rent on a set you own. Rent is paid with masks or properties, and nobody gives change.</li>'+
   '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
   '<li>Toilet Paper Stash and Social Distancing raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
+  '<li>The host can set a turn timer of 90, 60 or 30 seconds, or turn it off. When the clock runs out your turn ends.</li>'+
   '<li>End your turn with 7 cards or fewer. There are two ways to win: be first to three full sets, or first to own a property in all ten colours.</li></ul></div>';
 }
 function vLobby(){
@@ -398,6 +406,7 @@ function vLobby(){
   '<div class="notice"><p class="big">Waiting for players</p><p>Share this page with your friends and give them the table code. Each of them types it under Join table.</p>'+
   '<ul>'+seats.map(s=>'<li>'+esc(s.name)+(s.id===game.host?' (host)':'')+(s.id===me?' (you)':'')+'</li>').join('')+'</ul>'+
   (n>5?'<p class="err">Only the first 5 players get dealt in.</p>':'')+
+  '<div class="row"><span>Turn timer</span>'+(isHost?[90,60,30,0].map(t=>btn(t?t+'s':'No timer',()=>setTimer(t),(game.timer||0)===t?'go':'')).join(''):'<b>'+(game.timer?game.timer+' seconds a turn':'off')+'</b>')+'</div>'+
   '<div class="row">'+(isHost?btn(n<2?'Need at least 2 players':'Deal the cards',startGame,'go',n<2||ui.busy):'<span class="muted">'+(seated?'The host deals when everyone is here.':'Taking your seat…')+'</span>')+btn('Leave table',leaveTable)+'</div>'+
   (ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+rulesHTML();
 }
@@ -523,7 +532,7 @@ function vTable(){
       fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
   }
   return '<div class="counts"><span>table <span class="code">'+esc(code)+'</span></span><span>deck: <b>'+g.deck.length+'</b></span><span>discard-pile: <b class="red">'+g.discard.length+'</b></span></div>'+
-    '<div class="status" data-drop="pile"><p class="big">'+big+'</p>'+(g.status==='playing'&&!g.pending?'<p class="next">'+who(nextP)+' is up next!</p>':'')+
+    '<div class="status" data-drop="pile">'+(g.timer&&g.status==='playing'?'<p class="clock" id="clock">'+clockText(g)+'</p>':'')+'<p class="big">'+big+'</p>'+(g.status==='playing'&&!g.pending?'<p class="next">'+who(nextP)+' is up next!</p>':'')+
       '<div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
     peekHTML(g)+'<div class="boards">'+g.order.filter(p=>p!==me).map(board).join('')+'</div>'+(inGame?board(me):'')+
     '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>'+handbar;
@@ -612,8 +621,20 @@ function peekHTML(g){
   if(Date.now()>=ui.peekUntil)return '';
   return '<section class="board turn" style="--pc:#fff"><div class="who"><b>'+esc(pname(g,g.peek.target))+"'s hand</b><span>closes in 10 seconds</span></div><div class=\"lane\">"+g.hands[g.peek.target].map(i=>cardHTML(i,{sm:true})).join('')+'</div></section>';
 }
+function clockLeft(g){return g.timer-(Date.now()-ui.turnAt)/1000;}
+function clockText(g){return '⏱ '+Math.max(0,Math.ceil(clockLeft(g)))+'s';}
+setInterval(()=>{
+  const g=game;if(!g||g.status!=='playing'||!g.timer||ui.tn!==g.tn)return;
+  const left=clockLeft(g),el=document.getElementById('clock');
+  if(el){el.textContent=clockText(g);el.classList.toggle('low',left<=10);}
+  if(g.pending||ui.busy||ui.firedTn===g.tn||!g.order.includes(me))return;
+  // the player whose turn it is ends it at zero; everyone else waits a little longer in case that player has gone
+  const wait=g.order[g.turn]===me?0:6+3*g.order.indexOf(me);
+  if(left<=-wait){ui.firedTn=g.tn;commit({t:'timeout',tn:g.tn});}
+},500);
 function render(){
   handlers=[];
+  if(game&&game.tn!==ui.tn){ui.tn=game.tn;ui.turnAt=Date.now();}
   if(game&&game.status!=='lobby'&&game.v!==ui.v){ui.v=game.v;resetSel();}
   const h0=document.querySelector('.handbar .hand'),sx=h0?h0.scrollLeft:0;
   $app.innerHTML=!code||!game?vHome():game.status==='lobby'?vLobby():vTable();
@@ -652,8 +673,8 @@ async function createTable(){
   try{
     let c='';for(let tries=0;tries<5;tries++){c='';for(let i=0;i<4;i++)c+='ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*24)];
       if(!(await db.doc('games/'+c).get()).exists)break;}
-    code=c;await gameRef().set({status:'lobby',host:me,v:0});
-    game={status:'lobby',host:me,v:0};seats=[];store.set('qd_code',code);await sit();watch();
+    code=c;await gameRef().set({status:'lobby',host:me,v:0,timer:90});
+    game={status:'lobby',host:me,v:0,timer:90};seats=[];store.set('qd_code',code);await sit();watch();
   }catch(e){code=null;game=null;ui.msg=SAVE_ERR;}
   ui.busy=false;render();
 }
@@ -675,12 +696,13 @@ function leaveTable(silent){
 }
 async function startGame(){
   if(ui.busy||seats.length<2)return;ui.busy=true;
-  const g=newGame(seats.slice(0,5).map(s=>({id:s.id,name:String(s.name||'Player').slice(0,16)})),me);
+  const g=newGame(seats.slice(0,5).map(s=>({id:s.id,name:String(s.name||'Player').slice(0,16)})),me,game.timer||0);
   try{await gameRef().set(g);game=g;}catch(e){ui.msg=SAVE_ERR;}
   ui.busy=false;render();
 }
+function setTimer(t){gameRef().update({timer:t}).catch(()=>flash(SAVE_ERR));}
 async function againGame(){
-  try{await gameRef().set({status:'lobby',host:game.host,v:(game.v||0)+1});}catch(e){flash(SAVE_ERR);}
+  try{await gameRef().set({status:'lobby',host:game.host,v:(game.v||0)+1,timer:game.timer||0});}catch(e){flash(SAVE_ERR);}
 }
 (async function boot(){
   ui.name=store.get('qd_name')||'';
