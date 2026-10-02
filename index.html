@@ -176,6 +176,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function pname(g,p){const x=g.players.find(q=>q.id===p);return x?x.name:'Someone';}
 function count(g,p,s){return g.props[p].filter(x=>x.color===s).length;}
 function complete(g,p){return Object.keys(SETS).filter(s=>count(g,p,s)>=SETS[s].size);}
+function colours(g,p){return Object.keys(SETS).filter(s=>count(g,p,s)).length;}
 function rentFor(g,p,s){const c=count(g,p,s);if(!c)return 0;let r=SETS[s].rent[Math.min(c,SETS[s].size)-1];
   if(c>=SETS[s].size)g.ups[p].forEach(u=>{if(u.color===s)r+=CARDS[u.id].val;});return r;}
 function payables(g,p){return g.bank[p].concat(g.props[p].map(x=>x.id).filter(id=>CARDS[id].val>0),g.ups[p].map(u=>u.id));}
@@ -203,7 +204,8 @@ function settle(g){
     if(!q.queue.length)g.pending=null;
   }
   for(let i=0;i<g.order.length;i++){const p=g.order[(g.turn+i)%g.order.length];
-    if(complete(g,p).length>=3){g.status='over';g.winner=p;g.pending=null;say(g,pname(g,p)+' wins with three full sets.');return;}}
+    const how=complete(g,p).length>=3?'three full sets':colours(g,p)>=Object.keys(SETS).length?'a property in all ten colours':null;
+    if(how){g.status='over';g.winner=p;g.how=how;g.pending=null;say(g,pname(g,p)+' wins with '+how+'.');return;}}
 }
 function applyEffect(g,q,t){
   const mv=(from,to,id)=>{const i=g.props[from].findIndex(x=>x.id===id);if(i>=0)g.props[to].push(g.props[from].splice(i,1)[0]);};
@@ -365,7 +367,7 @@ const total=ids=>ids.reduce((s,i)=>s+CARDS[i].val,0);
 function vHome(){
   const sample=[CARDS.find(c=>c.set==='essentials').id,CARDS.find(c=>c.act==='draw').id,CARDS.find(c=>c.act==='breaker').id,CARDS.find(c=>c.act==='house').id,CARDS.find(c=>c.act==='nope').id,CARDS.find(c=>c.val===5&&c.k==='money').id];
   return '<header><h1>Quarantine Deal</h1><p class="muted">A card game for 2 to 5 people who are each stuck at home.</p></header>'+
-  '<div class="notice"><p class="big">Collect three full sets of lockdown comforts before your friends do.</p>'+
+  '<div class="notice"><p class="big">Collect three full sets, or one property of every colour, before your friends do.</p>'+
     (ui.nodb?'<p class="err">This page can only save games when it is opened on claude.ai by someone signed in.</p>':
      !ui.ready?'<p class="muted">Connecting to the table service…</p>':
     '<div class="row"><label for="f-name">Your name</label><input id="f-name" maxlength="16" value="'+esc(ui.name)+'" placeholder="Nickname"></div>'+
@@ -381,7 +383,7 @@ function rulesHTML(){
   '<li>Rent cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
   '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
   '<li>Toilet Paper Stash and Social Distancing raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
-  '<li>End your turn with 7 cards or fewer. The first player with three full sets wins.</li></ul></div>';
+  '<li>End your turn with 7 cards or fewer. There are two ways to win: be first to three full sets, or first to own a property in all ten colours.</li></ul></div>';
 }
 function vLobby(){
   const isHost=game.host===me,n=seats.length,seated=seats.some(s=>s.id===me);
@@ -488,7 +490,7 @@ function vTable(){
   const g=game,inGame=g.order.includes(me),actor=actorOf(g),turnP=g.order[g.turn];
   const myTurn=inGame&&actor===me&&!g.pending&&g.status==='playing';
   const paying=inGame&&actor===me&&g.pending&&g.pending.type==='pay'&&g.pending.nope%2===0;
-  const big=g.status==='over'?pname(g,g.winner)+' wins with three full sets.':
+  const big=g.status==='over'?pname(g,g.winner)+' wins with '+(g.how||'three full sets')+'.':
     g.pending?pendingText(g):myTurn?'Your turn. '+(3-g.plays)+' play'+(3-g.plays===1?'':'s')+' left.':pname(g,turnP)+"'s turn.";
   const togglePay=id=>()=>{ui.pay.has(id)?ui.pay.delete(id):ui.pay.add(id);render();};
   const table=p=>{
@@ -496,7 +498,7 @@ function vTable(){
     const dots=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>'<i class="dot'+(count(g,p,s)>=SETS[s].size?' on':'')+'" style="--c:'+SETS[s].col+'"></i>').join('');
     const fn=mineT?x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null:null;
     return '<section class="panel'+(actor===p?' turn':'')+'" data-drop="player:'+p+'">'+
-      '<h2>'+(mineT?'Your table':esc(pname(g,p)))+' · '+complete(g,p).length+' of 3 sets</h2>'+
+      '<h2>'+(mineT?'Your table':esc(pname(g,p)))+' · '+complete(g,p).length+' of 3 sets · '+colours(g,p)+' of 10 colours</h2>'+
       (mineT?'':'<div class="chips"><span>Cards in hand <b>'+g.hands[p].length+'</b></span></div>')+
       '<div class="zone" data-drop="bank:'+p+'"><h2>Stockpile · '+total(bank)+'</h2>'+
         (bank.length?'<div class="stack">'+bank.map(i=>cardHTML(i,{sm:true,fn:mineT&&paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">'+(mineT?'Drop masks and spare action cards here.':'Empty.')+'</p>')+'</div>'+

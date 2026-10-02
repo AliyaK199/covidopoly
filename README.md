@@ -14,7 +14,7 @@ The page is published as a Claude artifact. It stores each table's state in the 
 - Close Business takes a property, Close Schools trades one, Close Borders takes a whole set. No! I'm in Quarantine cancels any action aimed at you.
 - Toilet Paper Stash (+3) and Social Distancing (+4) raise the rent on a full set.
 - Share Screen shows you a hand for 10 seconds, Cross Contaminate trades hand cards, False Positive takes back a recently played action, Delayed Shipment makes a player skip a draw, and Work From Home makes a player redraw their hand.
-- End your turn with 7 cards or fewer. The first player with three full sets wins.
+- End your turn with 7 cards or fewer. There are two ways to win: be first to three full sets, or first to own a property in all ten colours.
 
 ## Code layout
 
