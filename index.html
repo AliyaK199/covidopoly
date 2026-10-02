@@ -33,7 +33,7 @@ p{margin:0;max-width:65ch}
 .col{display:flex;flex-direction:column;gap:10px;min-width:0}
 .panel{background:var(--surface);border:1.5px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .panel.turn{border-color:var(--accent);box-shadow:inset 0 5px 0 var(--accent)}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))}
 .btn{font:600 16px var(--body);padding:8px 14px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
 .btn:hover{background:var(--ink);color:var(--bg)}
 .btn.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-ink)}
@@ -63,6 +63,11 @@ button.card:hover{transform:translateY(-3px)}
 .card .art{width:62px;height:62px;margin-block:auto;flex:none}
 .card .ds{font-size:13px;line-height:1.2;margin-top:auto}
 .card.money .nm{font-size:44px;margin-block:auto}
+/* property and rent cards are filled with their set colour, so a rent card visibly matches the sets it charges for */
+.card.solid .in{background:var(--band);color:#1b1b1b;box-shadow:inset 0 0 0 2px rgba(0,0,0,.28)}
+.card.solid .nm,.card.solid .lb{color:#1b1b1b}
+.card.solid .ds{font-weight:600}
+.card.solid .val{border-color:#f1efe8;color:#f1efe8}
 .card.sm{width:100px;border-radius:9px;padding:4px}
 .card.sm .in{min-height:0;padding:5px 4px 6px;border-radius:6px}
 .card.sm .nm{font-size:12px}
@@ -149,7 +154,7 @@ const ACTIONS={
   swap:['Close Schools','Swap one of your properties for one of theirs. No full sets.',3,3,'#c9c9c9','happy'],
   breaker:['Close Borders','Take a full set from a player.',5,2,'#c08af5','angry'],
   nope:['No! I\'m in Quarantine','Cancel an action played against you.',4,3,'#5b8cf0','angry'],
-  double:['SBA Loan','Play with a Bill Due card to double it.',1,2,'#e6cc5a','cool'],
+  double:['SBA Loan','Play with a Rent card to double it.',1,2,'#e6cc5a','cool'],
   house:['Toilet Paper Stash','Add to a full set for 3 more rent.',3,3,'#74b3b0','happy'],
   hotel:['Social Distancing','Add to a full set for 4 more rent.',4,2,'#5cba6e','happy'],
   peek:['Share Screen','See one player\'s hand for 10 seconds.',3,2,'#52b0e0','cool'],
@@ -167,8 +172,8 @@ const CARDS=(function(){
     .forEach(([a,b,v])=>add(1,{k:'wild',sets:[a,b],val:v,name:'Flex Space'}));
   add(2,{k:'wild',sets:null,val:0,name:'Spare Room'});
   [['lab','fitness'],['essentials','outdoors'],['hobbies','streaming'],['office','pantry'],['wifi','delivery']]
-    .forEach(p=>add(2,{k:'rent',sets:p,val:1,name:'Bill Due'}));
-  add(3,{k:'rent',sets:null,val:3,name:'Bill Due'});
+    .forEach(p=>add(2,{k:'rent',sets:p,val:1,name:'Rent'}));
+  add(3,{k:'rent',sets:null,val:3,name:'Rent'});
   for(const a in ACTIONS)add(ACTIONS[a][3],{k:'action',act:a,name:ACTIONS[a][0],val:ACTIONS[a][2]});
   return C;
 })();
@@ -335,17 +340,17 @@ function cardHTML(id,o){
   o=o||{};const c=CARDS[id];let band='#cfc9b4',tc=PALE,label='',ds='',art='';
   const two=s=>'linear-gradient(90deg,'+SETS[s[0]].col+' 50%,'+SETS[s[1]].col+' 50%)';
   if(c.k==='money'){label='Rolls';ds='Stockpile it to pay bills.';}
-  else if(c.k==='prop'){band=tc=SETS[c.set].col;label=SETS[c.set].n;ds='Rent '+SETS[c.set].rent.join(' · ');art=germ(tc,'happy');}
+  else if(c.k==='prop'){band=tc=SETS[c.set].col;label=SETS[c.set].n;ds='Rent '+SETS[c.set].rent.join(' · ');art=germ(PALE,'happy');}
   else if(c.k==='wild'){
     if(o.color){band=tc=SETS[o.color].col;label=SETS[o.color].n;}
     else{band=c.sets?two(c.sets):RAINBOW;label='Wild property';}
-    ds=c.sets?'Counts as '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'Counts as any set.';art=germ(o.color?tc:PALE,'cool');
+    ds=c.sets?'Counts as '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'Counts as any set.';art=germ(PALE,'cool');
   }else if(c.k==='rent'){
-    band=c.sets?two(c.sets):RAINBOW;label='Bill';art=germ(PALE,'angry');
-    ds=c.sets?'Everyone pays rent on your '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'One player pays rent on any set you own.';
+    band=c.sets?two(c.sets):RAINBOW;label=c.sets?'All players pay':'One player pays';art=germ(PALE,'angry');
+    ds=c.sets?'Everyone pays you rent on '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'Pick one player to pay you rent on any set you own.';
   }else{const A=ACTIONS[c.act];band=tc=A[4];label=c.act==='house'||c.act==='hotel'?'Upgrade':'Action';ds=A[1];art=germ(tc,A[5]);}
   const tag=o.fn?'button':'div';
-  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+(o.attr||'')+
+  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(c.k==='prop'||c.k==='wild'||c.k==='rent'?'solid ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+(o.attr||'')+
     ' style="--band:'+band+';--tc:'+tc+'"><span class="in">'+(c.k==='money'?'':'<span class="val">'+c.val+'</span>')+
     '<span class="lb">'+esc(label)+'</span><span class="nm">'+esc(c.name)+'</span>'+art+'<span class="ds">'+esc(ds)+'</span></span></'+tag+'>';
 }
@@ -375,7 +380,7 @@ function rulesHTML(){
   return '<div class="col"><h2>How to play</h2><ul>'+
   '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards by dragging them from your hand onto a table.</li>'+
   '<li>Put properties on the table to build sets. Put rolls and unwanted action cards in your stockpile to pay bills.</li>'+
-  '<li>Bill Due cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
+  '<li>Rent cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
   '<li>Close Business takes a property, Close Schools trades one, and Close Borders takes a whole set. No! I\'m in Quarantine cancels any action aimed at you.</li>'+
   '<li>Toilet Paper Stash and Social Distancing raise the rent on a full set. The other action cards mess with hands and draws, and each card says what it does.</li>'+
   '<li>End your turn with 7 cards or fewer. The first player with three full sets wins.</li></ul></div>';
@@ -477,7 +482,7 @@ function sheet(g,c){
     if(!got.length)out.push('<p class="muted">No action cards have been played recently.</p>');
     got.forEach(i=>out.push(btn('Take back '+CARDS[i].name,()=>play({pick:i}),'go')));
   }else if(c.act==='nope')out.push('<p class="muted">Keep this to cancel an action played against you.</p>');
-  else out.push('<p class="muted">Play this together with a Bill Due card.</p>');
+  else out.push('<p class="muted">Play this together with a Rent card.</p>');
   if(c.k!=='prop'&&c.k!=='wild')out.push(btn('Stockpile it as '+c.val,()=>commit({t:'bank',card:id})));
   return out.join('');
 }
