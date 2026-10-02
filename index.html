@@ -1,0 +1,489 @@
+<title>Quarantine Deal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a card table. Opponents across the top, the pile and notice board in the middle, your own cards at the bottom. */
+:root{
+  --bg:#dfeee8; --surface:#f4faf7; --ink:#12302c; --muted:#4f6f69; --line:#b5cfc7;
+  --accent:#f0b90b; --accent-ink:#1c1a05; --alert:#b92f27; --tape:#12302c;
+  --card:#fffdf6; --card-ink:#1b2421; --card-line:#c9c4b2;
+  --display:'Bungee','Arial Black',Impact,sans-serif;
+  --body:'Barlow Semi Condensed','Arial Narrow',Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e211f; --surface:#163330; --ink:#dcece7; --muted:#8fb0a8; --line:#2a4d48;
+  --accent:#f0b90b; --accent-ink:#1c1a05; --alert:#ff8a7e; --tape:#07100f;
+  --card:#fffdf6; --card-ink:#1b2421; --card-line:#c9c4b2; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0e211f; --surface:#163330; --ink:#dcece7; --muted:#8fb0a8; --line:#2a4d48;
+  --accent:#f0b90b; --accent-ink:#1c1a05; --alert:#ff8a7e; --tape:#07100f;
+  --card:#fffdf6; --card-ink:#1b2421; --card-line:#c9c4b2; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;padding-inline:16px;padding-block:0 40px}
+#app{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.tape{height:12px;margin-inline:-16px;background:repeating-linear-gradient(-45deg,var(--accent) 0 14px,var(--tape) 14px 28px)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,6vw,40px);line-height:1;margin:0;letter-spacing:.01em}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0;font-weight:700}
+p{margin:0;max-width:65ch}
+.muted{color:var(--muted)}
+.code{font-family:var(--display);letter-spacing:.14em;background:var(--accent);color:var(--accent-ink);padding:2px 10px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel{background:var(--surface);border:1.5px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel.turn{border-color:var(--accent);box-shadow:inset 0 5px 0 var(--accent)}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.btn{font:600 16px var(--body);padding:8px 14px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-ink)}
+.btn.go:hover{filter:brightness(1.08);background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.card:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input{font:500 17px var(--body);padding:8px 10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+#f-code{width:7em;text-transform:uppercase;letter-spacing:.14em}
+.notice{background:var(--surface);border:1.5px solid var(--ink);padding:14px;display:flex;flex-direction:column;gap:12px}
+.notice .big{font-size:21px;font-weight:700;text-wrap:balance}
+.err{color:var(--alert);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;color:var(--muted)}
+.chips b{color:var(--ink);font-variant-numeric:tabular-nums}
+.sets{display:flex;flex-wrap:wrap;gap:10px}
+.set{display:flex;flex-direction:column;gap:3px}
+.set>span{font-size:13px;font-weight:700;letter-spacing:.04em}
+.set.full>span::after{content:" \2713 full"}
+.stack{display:flex;flex-wrap:wrap;gap:4px}
+.hand{display:flex;flex-wrap:wrap;gap:8px}
+.card{font-family:var(--body);text-align:left;background:var(--card);color:var(--card-ink);border:1.5px solid var(--card-line);border-radius:7px;width:112px;min-height:150px;padding:0 0 8px;display:flex;flex-direction:column;gap:4px;overflow:hidden;position:relative}
+button.card{cursor:pointer}
+button.card:hover{transform:translateY(-3px)}
+.card .band{background:var(--band);color:var(--bink);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 8px;min-height:26px}
+.card .val{position:absolute;top:32px;right:6px;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--card-ink);display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--card)}
+.card .nm{font-weight:700;font-size:16px;line-height:1.1;padding:6px 36px 0 8px}
+.card .ds{font-size:13px;line-height:1.2;padding:0 8px;color:#4c5551;margin-top:auto}
+.card.money .nm{font-family:var(--display);font-size:30px;font-weight:400;padding-top:14px}
+.card.sm{width:92px;min-height:0;padding-bottom:5px}
+.card.sm .nm{font-size:14px;padding:3px 30px 0 6px}
+.card.sm .val{top:28px;right:4px;width:22px;height:22px;font-size:12px}
+.card.sm .ds{display:none}
+.card.sel{outline:4px solid var(--accent);outline-offset:1px;transform:translateY(-5px)}
+.log{font-size:15px;color:var(--muted);max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.log div:first-child{color:var(--ink);font-weight:600}
+ul{margin:0;padding-left:20px;max-width:65ch}
+li{margin-block:3px}
+@media (prefers-reduced-motion:reduce){button.card:hover,.card.sel{transform:none}}
+</style>
+
+<div class="tape"></div>
+<div id="app"></div>
+
+<script>
+/*ENGINE*/
+const SETS={
+  pantry:{n:'Pantry',size:2,rent:[1,2],val:1,col:'#7d5236',ink:'#fff',cards:['Canned Beans','Instant Noodles']},
+  office:{n:'Home Office',size:3,rent:[1,2,3],val:1,col:'#8ccdec',ink:'#102a36',cards:['Kitchen Table Desk','Couch Office','Ironing Board Desk']},
+  hobbies:{n:'New Hobbies',size:3,rent:[1,2,4],val:2,col:'#e79cc0',ink:'#3a1026',cards:['Sourdough Starter','Banana Bread','1000-Piece Puzzle']},
+  streaming:{n:'Binge List',size:3,rent:[1,3,5],val:2,col:'#f0903f',ink:'#331703',cards:['True Crime Docuseries','Baking Show','Sitcom Rewatch']},
+  essentials:{n:'Essentials',size:3,rent:[2,3,6],val:3,col:'#cf3e36',ink:'#fff',cards:['Toilet Paper','Hand Sanitizer','Disinfecting Wipes']},
+  outdoors:{n:'Fresh Air',size:3,rent:[2,4,6],val:3,col:'#f1d040',ink:'#322a02',cards:['Balcony','Backyard','Walk Around the Block']},
+  fitness:{n:'Home Gym',size:3,rent:[2,4,7],val:4,col:'#3a9257',ink:'#fff',cards:['Yoga Mat','Dumbbells','Stationary Bike']},
+  lab:{n:'Clinic',size:2,rent:[3,8],val:4,col:'#2a4a9c',ink:'#fff',cards:['Test Kits','Vaccine Appointment']},
+  delivery:{n:'Deliveries',size:4,rent:[1,2,3,4],val:2,col:'#30353c',ink:'#fff',cards:['Grocery Delivery','Takeout','Parcel Drop','Pharmacy Run']},
+  wifi:{n:'Connection',size:2,rent:[1,2],val:2,col:'#bccb6c',ink:'#262c08',cards:['Wi-Fi Router','Webcam']}
+};
+const ACTIONS={
+  draw:['Stimulus Check','Draw 2 extra cards.',1,10],
+  bday:['Zoom Birthday','Everyone pays you 2.',2,3],
+  debt:['Landlord Calls','One player pays you 5.',3,3],
+  sly:['Porch Pirate','Take one property that is not in a full set.',3,3],
+  swap:['Contactless Swap','Swap one of your properties for one of theirs. No full sets.',3,3],
+  breaker:['Lockdown Order','Take a full set from a player.',5,2],
+  nope:['Six Feet Back','Cancel an action played against you.',4,3],
+  double:['Surge Pricing','Play with a Bill Due card to double it.',1,2]
+};
+const CARDS=(function(){
+  const C=[],add=(n,c)=>{for(let i=0;i<n;i++)C.push(Object.assign({id:C.length},c));};
+  [[1,6],[2,5],[3,3],[4,3],[5,2],[10,1]].forEach(([v,n])=>add(n,{k:'money',val:v,name:String(v)}));
+  for(const s in SETS)SETS[s].cards.forEach(nm=>add(1,{k:'prop',set:s,name:nm,val:SETS[s].val}));
+  [['lab','fitness',4],['office','pantry',1],['hobbies','streaming',2],['hobbies','streaming',2],['essentials','outdoors',3],
+   ['essentials','outdoors',3],['fitness','delivery',4],['office','delivery',4],['wifi','delivery',2]]
+    .forEach(([a,b,v])=>add(1,{k:'wild',sets:[a,b],val:v,name:'Flex Space'}));
+  add(2,{k:'wild',sets:null,val:0,name:'Spare Room'});
+  [['lab','fitness'],['essentials','outdoors'],['hobbies','streaming'],['office','pantry'],['wifi','delivery']]
+    .forEach(p=>add(2,{k:'rent',sets:p,val:1,name:'Bill Due'}));
+  add(3,{k:'rent',sets:null,val:3,name:'Bill Due'});
+  for(const a in ACTIONS)add(ACTIONS[a][3],{k:'action',act:a,name:ACTIONS[a][0],val:ACTIONS[a][2]});
+  return C;
+})();
+const HAND_LIMIT=7;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function pname(g,p){const x=g.players.find(q=>q.id===p);return x?x.name:'Someone';}
+function count(g,p,s){return g.props[p].filter(x=>x.color===s).length;}
+function complete(g,p){return Object.keys(SETS).filter(s=>count(g,p,s)>=SETS[s].size);}
+function rentFor(g,p,s){const c=count(g,p,s);return c?SETS[s].rent[Math.min(c,SETS[s].size)-1]:0;}
+function payables(g,p){return g.bank[p].concat(g.props[p].map(x=>x.id).filter(id=>CARDS[id].val>0));}
+function stealable(g,p){return g.props[p].filter(x=>count(g,p,x.color)<SETS[x.color].size);}
+function actorOf(g){if(g.status!=='playing')return null;const q=g.pending;return q?(q.nope%2===0?q.queue[0]:q.from):g.order[g.turn];}
+function validColor(c,s){if(!SETS[s])return false;return c.k==='prop'?c.set===s:c.k==='wild'&&(!c.sets||c.sets.includes(s));}
+function take(arr,id){const i=arr.indexOf(id);if(i<0)return false;arr.splice(i,1);return true;}
+function say(g,t){g.log.unshift(t);if(g.log.length>40)g.log.length=40;}
+function draw(g,p,n){for(let i=0;i<n;i++){if(!g.deck.length){g.deck=shuffle(g.discard);g.discard=[];}if(!g.deck.length)break;g.hands[p].push(g.deck.pop());}}
+function startTurn(g){const p=g.order[g.turn];g.plays=0;draw(g,p,g.hands[p].length?2:5);}
+function nextTurn(g){g.pending=null;g.turn=(g.turn+1)%g.order.length;startTurn(g);}
+function newGame(players,host){
+  const g={status:'playing',host:host,v:1,players:players,order:players.map(p=>p.id),turn:0,plays:0,
+    deck:shuffle(CARDS.map(c=>c.id)),discard:[],hands:{},bank:{},props:{},pending:null,log:[],winner:null};
+  g.order.forEach(p=>{g.hands[p]=[];g.bank[p]=[];g.props[p]=[];draw(g,p,5);});
+  say(g,'Cards dealt. '+pname(g,g.order[0])+' goes first.');
+  startTurn(g);return g;
+}
+function settle(g){
+  const q=g.pending;
+  if(q){
+    while(q.queue.length&&q.type==='pay'&&q.nope===0&&!payables(g,q.queue[0]).length){say(g,pname(g,q.queue[0])+' has nothing to pay with.');q.queue.shift();}
+    if(!q.queue.length)g.pending=null;
+  }
+  for(let i=0;i<g.order.length;i++){const p=g.order[(g.turn+i)%g.order.length];
+    if(complete(g,p).length>=3){g.status='over';g.winner=p;g.pending=null;say(g,pname(g,p)+' wins with three full sets.');return;}}
+}
+function applyEffect(g,q,t){
+  const mv=(from,to,id)=>{const i=g.props[from].findIndex(x=>x.id===id);if(i>=0)g.props[to].push(g.props[from].splice(i,1)[0]);};
+  if(q.type==='sly')mv(t,q.from,q.take);
+  if(q.type==='swap'){mv(t,q.from,q.take);mv(q.from,t,q.give);}
+  if(q.type==='breaker')g.props[t].filter(x=>x.color===q.color).map(x=>x.id).forEach(id=>mv(t,q.from,id));
+}
+// Applies one action for player `me` to game `g` in place. Returns an error message, or null when it worked.
+function act(g,me,a){
+  if(g.status!=='playing')return 'The game is not running.';
+  if(a.t==='skip'){if(me!==g.host)return 'Only the host can skip.';say(g,'The host skipped '+pname(g,actorOf(g))+'.');nextTurn(g);return null;}
+  if(actorOf(g)!==me)return 'It is not your move.';
+  const q=g.pending,hand=g.hands[me],who=pname(g,me);
+  if(q){
+    if(a.t!=='respond')return 'Answer the action first.';
+    const t=q.queue[0];
+    if(a.r==='nope'){
+      const id=hand.find(i=>CARDS[i].act==='nope');if(id==null)return 'You have no Six Feet Back card.';
+      take(hand,id);g.discard.push(id);q.nope++;say(g,who+' played Six Feet Back.');return null;
+    }
+    if(q.nope%2===1){say(g,who+' let it go.');}
+    else if(q.type==='pay'){
+      const ids=a.pay||[],can=payables(g,me);
+      if(new Set(ids).size!==ids.length||!ids.every(i=>can.includes(i)))return 'Pay with cards from your stockpile or properties.';
+      const sum=ids.reduce((s,i)=>s+CARDS[i].val,0);
+      if(sum<q.amount&&ids.length<can.length)return 'That does not cover '+q.amount+'.';
+      ids.forEach(id=>{if(take(g.bank[me],id))g.bank[q.from].push(id);else{const i=g.props[me].findIndex(x=>x.id===id);g.props[q.from].push(g.props[me].splice(i,1)[0]);}});
+      say(g,who+' paid '+pname(g,q.from)+' '+sum+'.');
+    }else{applyEffect(g,q,t);say(g,who+' accepted.');}
+    q.queue.shift();q.nope=0;settle(g);return null;
+  }
+  if(a.t==='end'){
+    const d=a.discard||[],over=Math.max(0,hand.length-HAND_LIMIT);
+    if(d.length!==over||new Set(d).size!==d.length||!d.every(i=>hand.includes(i)))return 'Discard '+over+' card'+(over===1?'':'s')+' to end your turn.';
+    d.forEach(i=>{take(hand,i);g.discard.push(i);});
+    nextTurn(g);say(g,pname(g,g.order[g.turn])+"'s turn.");return null;
+  }
+  if(a.t==='recolor'){
+    const x=g.props[me].find(p=>p.id===a.card);
+    if(!x||CARDS[x.id].k!=='wild'||!validColor(CARDS[x.id],a.color))return 'That card cannot move there.';
+    x.color=a.color;settle(g);return null;
+  }
+  const c=CARDS[a.card];
+  if(!c||!hand.includes(a.card))return 'That card is not in your hand.';
+  if(g.plays>=3)return 'You have already played 3 cards.';
+  const others=g.order.filter(p=>p!==me);
+  if(a.t==='bank'){
+    if(c.k==='prop'||c.k==='wild')return 'Properties cannot go in the stockpile.';
+    take(hand,c.id);g.bank[me].push(c.id);g.plays++;say(g,who+' stockpiled '+c.val+'.');return null;
+  }
+  if(a.t==='prop'){
+    if(!validColor(c,a.color))return 'Pick a set for that card.';
+    take(hand,c.id);g.props[me].push({id:c.id,color:a.color});g.plays++;
+    say(g,who+' put down '+c.name+' ('+SETS[a.color].n+').');settle(g);return null;
+  }
+  if(a.t!=='play')return 'Unknown move.';
+  const isOther=p=>others.includes(p);
+  if(c.k==='rent'){
+    const s=a.color;
+    if(!SETS[s]||(c.sets&&!c.sets.includes(s))||!count(g,me,s))return 'Pick a set you own for this bill.';
+    if(!c.sets&&!isOther(a.target))return 'Pick who gets the bill.';
+    let amt=rentFor(g,me,s),dbl=null;
+    if(a.double){dbl=hand.find(i=>CARDS[i].act==='double');if(dbl==null||g.plays>1)return 'You cannot add Surge Pricing now.';amt*=2;}
+    take(hand,c.id);g.discard.push(c.id);g.plays++;
+    if(dbl!=null){take(hand,dbl);g.discard.push(dbl);g.plays++;}
+    g.pending={type:'pay',from:me,queue:c.sets?others.slice():[a.target],amount:amt,nope:0};
+    say(g,who+' sent a bill of '+amt+' for '+SETS[s].n+(c.sets?' to everyone.':' to '+pname(g,a.target)+'.'));
+  }else if(c.k==='action'){
+    let p=null;
+    if(c.act==='draw'){draw(g,me,2);say(g,who+' cashed a Stimulus Check and drew 2.');take(hand,c.id);}
+    else if(c.act==='bday'){p={type:'pay',from:me,queue:others.slice(),amount:2,nope:0};say(g,who+' is having a Zoom Birthday. Everyone owes 2.');}
+    else if(c.act==='debt'){if(!isOther(a.target))return 'Pick a player.';p={type:'pay',from:me,queue:[a.target],amount:5,nope:0};say(g,who+' is collecting 5 from '+pname(g,a.target)+'.');}
+    else if(c.act==='sly'){
+      if(!isOther(a.target)||!stealable(g,a.target).some(x=>x.id===a.take))return 'Pick a property that is not in a full set.';
+      p={type:'sly',from:me,queue:[a.target],take:a.take,nope:0};say(g,who+' is taking '+CARDS[a.take].name+' from '+pname(g,a.target)+'.');
+    }else if(c.act==='swap'){
+      if(!isOther(a.target)||!stealable(g,a.target).some(x=>x.id===a.take)||!stealable(g,me).some(x=>x.id===a.give))return 'Pick one of theirs and one of yours, neither in a full set.';
+      p={type:'swap',from:me,queue:[a.target],take:a.take,give:a.give,nope:0};
+      say(g,who+' wants to swap '+CARDS[a.give].name+' for '+pname(g,a.target)+"'s "+CARDS[a.take].name+'.');
+    }else if(c.act==='breaker'){
+      if(!isOther(a.target)||!complete(g,a.target).includes(a.color))return 'Pick a full set.';
+      p={type:'breaker',from:me,queue:[a.target],color:a.color,nope:0};say(g,who+' ordered a lockdown on '+pname(g,a.target)+"'s "+SETS[a.color].n+' set.');
+    }else return 'That card only works as a reply or with a bill.';
+    if(c.act!=='draw')take(hand,c.id);
+    g.discard.push(c.id);g.plays++;g.pending=p;
+  }else return 'That card cannot be played that way.';
+  settle(g);return null;
+}
+/*END*/
+
+const $app=document.getElementById('app');
+let db=null,me=null,code=null,game=null,seats=[],unsubs=[],handlers=[];
+const ui={ready:false,nodb:false,name:'',join:'',msg:'',busy:false,v:-1,sel:null,recolor:null,step:{},pay:new Set(),disc:null};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+function on(fn){handlers.push(fn);return 'data-h="'+(handlers.length-1)+'"';}
+function btn(label,fn,cls,off){return '<button class="btn '+(cls||'')+'" '+on(fn)+(off?' disabled':'')+'>'+esc(label)+'</button>';}
+function resetSel(){ui.sel=null;ui.recolor=null;ui.step={};ui.pay=new Set();ui.disc=null;}
+function flash(m){ui.msg=m;render();}
+
+const RAINBOW='linear-gradient(90deg,#cf3e36,#f0903f,#f1d040,#3a9257,#2a4a9c,#e79cc0)';
+function cardHTML(id,o){
+  o=o||{};const c=CARDS[id];let band='#d9d4c2',bink='#1b2421',label='',ds='';
+  const two=s=>'linear-gradient(90deg,'+SETS[s[0]].col+' 50%,'+SETS[s[1]].col+' 50%)';
+  if(c.k==='money'){label='Rolls';ds='Stockpile it to pay bills.';}
+  else if(c.k==='prop'){band=SETS[c.set].col;bink=SETS[c.set].ink;label=SETS[c.set].n;ds='Rent '+SETS[c.set].rent.join(' · ');}
+  else if(c.k==='wild'){
+    if(o.color){band=SETS[o.color].col;bink=SETS[o.color].ink;label=SETS[o.color].n;}
+    else if(c.sets){band=two(c.sets);bink='#fff';label='Wild';}
+    else{band=RAINBOW;bink='#fff';label='Wild';}
+    ds=c.sets?'Counts as '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'Counts as any set.';
+  }else if(c.k==='rent'){
+    band=c.sets?two(c.sets):RAINBOW;bink='#fff';label='Bill';
+    ds=c.sets?'Everyone pays rent on your '+SETS[c.sets[0]].n+' or '+SETS[c.sets[1]].n+'.':'One player pays rent on any set you own.';
+  }else{band='#12302c';bink='#f0b90b';label='Action';ds=ACTIONS[c.act][1];}
+  const tag=o.fn?'button':'div';
+  return '<'+tag+' class="card '+(c.k==='money'?'money ':'')+(o.sm?'sm ':'')+(o.sel?'sel':'')+'" '+(o.fn?on(o.fn):'')+
+    ' style="--band:'+band+';--bink:'+bink+'"><span class="band"'+(bink==='#fff'&&c.k!=='prop'&&!o.color?' style="text-shadow:0 1px 2px #000"':'')+'>'+esc(label)+'</span>'+
+    (c.k==='money'?'':'<span class="val">'+c.val+'</span>')+'<span class="nm">'+esc(c.name)+'</span><span class="ds">'+esc(ds)+'</span></'+tag+'>';
+}
+function setsHTML(g,p,fn){
+  const out=Object.keys(SETS).filter(s=>count(g,p,s)).map(s=>{
+    const n=count(g,p,s),full=n>=SETS[s].size;
+    return '<div class="set'+(full?' full':'')+'"><span>'+esc(SETS[s].n)+' '+n+'/'+SETS[s].size+'</span><div class="stack">'+
+      g.props[p].filter(x=>x.color===s).map(x=>cardHTML(x.id,{sm:true,color:x.color,fn:fn?fn(x):null,sel:ui.pay.has(x.id)||ui.recolor===x.id})).join('')+'</div></div>';
+  });
+  return out.length?'<div class="sets">'+out.join('')+'</div>':'<p class="muted">No properties yet.</p>';
+}
+const total=ids=>ids.reduce((s,i)=>s+CARDS[i].val,0);
+
+function vHome(){
+  const sample=[CARDS.find(c=>c.set==='essentials').id,CARDS.find(c=>c.act==='draw').id,CARDS.find(c=>c.k==='rent').id,CARDS.find(c=>c.act==='nope').id,CARDS.find(c=>c.val===5&&c.k==='money').id];
+  return '<header><h1>Quarantine Deal</h1><p class="muted">A card game for 2 to 5 people who are each stuck at home.</p></header>'+
+  '<div class="notice"><p class="big">Collect three full sets of lockdown comforts before your friends do.</p>'+
+    (ui.nodb?'<p class="err">This page can only save games when it is opened on claude.ai by someone signed in.</p>':
+     !ui.ready?'<p class="muted">Connecting to the table service…</p>':
+    '<div class="row"><label for="f-name">Your name</label><input id="f-name" maxlength="16" value="'+esc(ui.name)+'" placeholder="Nickname"></div>'+
+    '<div class="row">'+btn('Start a new table',createTable,'go',ui.busy)+'<span class="muted">or</span>'+
+      '<input id="f-code" maxlength="4" value="'+esc(ui.join)+'" placeholder="CODE" aria-label="Table code">'+btn('Join table',()=>joinTable(ui.join),'',ui.busy)+'</div>')+
+    (ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
+  '<div class="hand">'+sample.map(i=>cardHTML(i)).join('')+'</div>'+rulesHTML();
+}
+function rulesHTML(){
+  return '<div class="col"><h2>How to play</h2><ul>'+
+  '<li>Everyone starts with 5 cards. On your turn you draw 2, then play up to 3 cards.</li>'+
+  '<li>Put properties on the table to build sets. Put rolls and unwanted action cards in your stockpile to pay bills.</li>'+
+  '<li>Bill Due cards charge rent on a set you own. Bills are paid from the stockpile or with properties, and nobody gives change.</li>'+
+  '<li>Porch Pirate takes a property, Contactless Swap trades one, and Lockdown Order takes a whole set. Six Feet Back cancels any of them.</li>'+
+  '<li>End your turn with 7 cards or fewer. The first player with three full sets wins.</li></ul></div>';
+}
+function vLobby(){
+  const isHost=game.host===me,n=seats.length,seated=seats.some(s=>s.id===me);
+  return '<header><h1>Quarantine Deal</h1><p>Table <span class="code">'+esc(code)+'</span></p></header>'+
+  '<div class="notice"><p class="big">Waiting for players</p><p>Share this page with your friends and give them the table code. Each of them types it under Join table.</p>'+
+  '<ul>'+seats.map(s=>'<li>'+esc(s.name)+(s.id===game.host?' (host)':'')+(s.id===me?' (you)':'')+'</li>').join('')+'</ul>'+
+  (n>5?'<p class="err">Only the first 5 players get dealt in.</p>':'')+
+  '<div class="row">'+(isHost?btn(n<2?'Need at least 2 players':'Deal the cards',startGame,'go',n<2||ui.busy):'<span class="muted">'+(seated?'The host deals when everyone is here.':'Taking your seat…')+'</span>')+btn('Leave table',leaveTable)+'</div>'+
+  (ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+rulesHTML();
+}
+function pendingText(g){
+  const q=g.pending,f=pname(g,q.from),t=pname(g,q.queue[0]);
+  let s=q.type==='pay'?f+' is charging '+t+' '+q.amount+'.':
+    q.type==='sly'?f+' is taking '+CARDS[q.take].name+' from '+t+'.':
+    q.type==='swap'?f+' offers '+CARDS[q.give].name+' for '+t+"'s "+CARDS[q.take].name+'.':
+    f+' is taking '+t+"'s full "+SETS[q.color].n+' set.';
+  if(q.nope%2===1)s+=' '+t+' cancelled it with Six Feet Back.';
+  if(q.nope>0&&q.nope%2===0)s+=' '+f+' cancelled the cancel.';
+  return s;
+}
+function controls(g){
+  const q=g.pending,hand=g.hands[me]||[],actor=actorOf(g),out=[];
+  if(g.status==='over')return (g.host===me?btn('Play again',againGame,'go'):'')+btn('Leave table',leaveTable);
+  if(!g.order.includes(me))return '<p class="muted">You are watching this game.</p>'+btn('Leave table',leaveTable);
+  if(actor!==me)return '<p class="muted">Waiting for '+esc(pname(g,actor))+'…</p>'+(g.host===me?btn('Skip '+pname(g,actor),()=>commit({t:'skip'})):'');
+  const hasNope=hand.some(i=>CARDS[i].act==='nope');
+  if(q){
+    if(q.nope%2===1){out.push(btn('Let it go',()=>commit({t:'respond',r:'ok'}),'go'));}
+    else if(q.type==='pay'){
+      const can=payables(g,me),sum=total([...ui.pay]),ok=sum>=q.amount||ui.pay.size===can.length;
+      out.push('<p>Tap cards in your stockpile or properties to pay. Selected: <b>'+sum+'</b> of '+q.amount+'.</p>');
+      out.push(btn(sum>=q.amount?'Pay '+sum:ok?'Pay everything you have':'Pay',()=>commit({t:'respond',r:'ok',pay:[...ui.pay]}),'go',!ok));
+    }else out.push(btn('Accept',()=>commit({t:'respond',r:'ok'}),'go'));
+    if(hasNope)out.push(btn(q.nope%2?'Counter with Six Feet Back':'Play Six Feet Back',()=>commit({t:'respond',r:'nope'})));
+    return out.join('');
+  }
+  const left=3-g.plays,over=hand.length-HAND_LIMIT;
+  if(ui.disc){
+    out.push('<p>Tap '+over+' card'+(over===1?'':'s')+' in your hand to discard.</p>');
+    out.push(btn('Discard and end turn',()=>commit({t:'end',discard:[...ui.disc]}),'go',ui.disc.size!==over));
+    out.push(btn('Keep playing',()=>{ui.disc=null;render();}));
+    return out.join('');
+  }
+  if(ui.recolor!=null){
+    const c=CARDS[ui.recolor];
+    out.push('<p>Move this wild card to:</p>');
+    (c.sets||Object.keys(SETS)).forEach(s=>out.push(btn(SETS[s].n,()=>commit({t:'recolor',card:c.id,color:s}))));
+    return out.join('');
+  }
+  if(ui.sel!=null&&left>0)out.push(sheet(g,CARDS[ui.sel]));
+  else if(left>0)out.push('<p class="muted">Tap a card in your hand to play it.</p>');
+  out.push(btn('End turn',()=>{if(over>0){ui.sel=null;ui.disc=new Set();render();}else commit({t:'end'});},left>0&&ui.sel!=null?'':'go'));
+  return out.join('');
+}
+function sheet(g,c){
+  const out=[],id=c.id,others=g.order.filter(p=>p!==me),left=3-g.plays;
+  const play=x=>commit(Object.assign({t:'play',card:id},x));
+  if(c.k==='prop')out.push(btn('Put down '+c.name,()=>commit({t:'prop',card:id,color:c.set}),'go'));
+  else if(c.k==='wild'){out.push('<p>Put it down as:</p>');(c.sets||Object.keys(SETS)).forEach(s=>out.push(btn(SETS[s].n,()=>commit({t:'prop',card:id,color:s}),'go')));}
+  else if(c.k==='rent'){
+    const owned=(c.sets||Object.keys(SETS)).filter(s=>count(g,me,s));
+    const canDbl=left>=2&&g.hands[me].some(i=>CARDS[i].act==='double');
+    if(!owned.length)out.push('<p class="muted">You need a property in a matching set to send this bill.</p>');
+    if(canDbl&&owned.length)out.push(btn(ui.step.double?'Surge Pricing: on (uses 2 plays)':'Add Surge Pricing',()=>{ui.step.double=!ui.step.double;render();}));
+    owned.forEach(s=>{const amt=rentFor(g,me,s)*(ui.step.double?2:1);
+      if(c.sets)out.push(btn('Bill everyone '+amt+' for '+SETS[s].n,()=>play({color:s,double:!!ui.step.double}),'go'));
+      else others.forEach(p=>out.push(btn('Bill '+pname(g,p)+' '+amt+' for '+SETS[s].n,()=>play({color:s,target:p,double:!!ui.step.double}),'go')));});
+  }else if(c.act==='draw')out.push(btn('Cash it: draw 2 cards',()=>play({}),'go'));
+  else if(c.act==='bday')out.push(btn('Everyone pays you 2',()=>play({}),'go'));
+  else if(c.act==='debt')others.forEach(p=>out.push(btn('Collect 5 from '+pname(g,p),()=>play({target:p}),'go')));
+  else if(c.act==='sly'||c.act==='swap'){
+    const theirs=[];others.forEach(p=>stealable(g,p).forEach(x=>theirs.push({p:p,x:x})));
+    if(!theirs.length)out.push('<p class="muted">Nobody has a property outside a full set.</p>');
+    else if(c.act==='sly')theirs.forEach(o=>out.push(btn('Take '+CARDS[o.x.id].name+' from '+pname(g,o.p),()=>play({target:o.p,take:o.x.id}),'go')));
+    else if(!ui.step.take){out.push('<p>Which card do you want?</p>');theirs.forEach(o=>out.push(btn(CARDS[o.x.id].name+' ('+pname(g,o.p)+')',()=>{ui.step.take=o;render();})));}
+    else{const mine=stealable(g,me);
+      out.push(mine.length?'<p>Give which of yours for '+esc(CARDS[ui.step.take.x.id].name)+'?</p>':'<p class="muted">You have no property outside a full set to give.</p>');
+      mine.forEach(x=>out.push(btn(CARDS[x.id].name+' ('+SETS[x.color].n+')',()=>play({target:ui.step.take.p,take:ui.step.take.x.id,give:x.id}),'go')));}
+  }else if(c.act==='breaker'){
+    let any=false;others.forEach(p=>complete(g,p).forEach(s=>{any=true;out.push(btn('Take '+pname(g,p)+"'s "+SETS[s].n+' set',()=>play({target:p,color:s}),'go'));}));
+    if(!any)out.push('<p class="muted">Nobody has a full set yet.</p>');
+  }else if(c.act==='nope')out.push('<p class="muted">Keep this to cancel an action played against you.</p>');
+  else out.push('<p class="muted">Play this together with a Bill Due card.</p>');
+  if(c.k!=='prop'&&c.k!=='wild')out.push(btn('Stockpile it as '+c.val,()=>commit({t:'bank',card:id})));
+  return out.join('');
+}
+function vTable(){
+  const g=game,inGame=g.order.includes(me),actor=actorOf(g),turnP=g.order[g.turn];
+  const myTurn=inGame&&actor===me&&!g.pending&&g.status==='playing';
+  const paying=inGame&&actor===me&&g.pending&&g.pending.type==='pay'&&g.pending.nope%2===0;
+  const big=g.status==='over'?pname(g,g.winner)+' wins with three full sets.':
+    g.pending?pendingText(g):myTurn?'Your turn. '+(3-g.plays)+' play'+(3-g.plays===1?'':'s')+' left.':pname(g,turnP)+"'s turn.";
+  const togglePay=id=>()=>{ui.pay.has(id)?ui.pay.delete(id):ui.pay.add(id);render();};
+  const opp=g.order.filter(p=>p!==me).map(p=>
+    '<div class="panel'+(actor===p?' turn':'')+'"><h2>'+esc(pname(g,p))+(complete(g,p).length?' · '+complete(g,p).length+' of 3 sets':'')+'</h2>'+
+    '<div class="chips"><span>Hand <b>'+g.hands[p].length+'</b></span><span>Stockpile <b>'+total(g.bank[p])+'</b>'+(g.bank[p].length?' ('+g.bank[p].map(i=>CARDS[i].val).sort((a,b)=>b-a).join(', ')+')':'')+'</span></div>'+
+    setsHTML(g,p)+'</div>').join('');
+  let mine='';
+  if(inGame){
+    const hand=g.hands[me];
+    mine='<div class="panel'+(actor===me?' turn':'')+'"><h2>Your properties · '+complete(g,me).length+' of 3 sets</h2>'+
+      setsHTML(g,me,x=>paying&&CARDS[x.id].val>0?togglePay(x.id):myTurn&&CARDS[x.id].k==='wild'&&!ui.disc?()=>{ui.recolor=ui.recolor===x.id?null:x.id;ui.sel=null;render();}:null)+
+      '<h2>Your stockpile · '+total(g.bank[me])+'</h2>'+
+      (g.bank[me].length?'<div class="stack">'+g.bank[me].slice().sort((a,b)=>CARDS[b].val-CARDS[a].val).map(i=>cardHTML(i,{sm:true,fn:paying?togglePay(i):null,sel:ui.pay.has(i)})).join('')+'</div>':'<p class="muted">Empty. Stockpile rolls so bills do not eat your properties.</p>')+
+      '<h2>Your hand · '+hand.length+'</h2><div class="hand">'+hand.map(i=>cardHTML(i,{
+        sel:ui.sel===i||(ui.disc&&ui.disc.has(i)),
+        fn:ui.disc?()=>{ui.disc.has(i)?ui.disc.delete(i):ui.disc.add(i);render();}:myTurn?()=>{ui.sel=ui.sel===i?null:i;ui.recolor=null;ui.step={};render();}:null})).join('')+'</div></div>';
+  }
+  return '<header><h1>Quarantine Deal</h1><p>Table <span class="code">'+esc(code)+'</span></p>'+
+    '<div class="chips"><span>Deck <b>'+g.deck.length+'</b></span><span>Discards <b>'+g.discard.length+'</b></span></div></header>'+
+    '<div class="notice"><p class="big">'+esc(big)+'</p><div class="row">'+controls(g)+'</div>'+(ui.msg?'<p class="err">'+esc(ui.msg)+'</p>':'')+'</div>'+
+    '<div class="grid">'+opp+'</div>'+mine+
+    '<div class="col"><h2>What happened</h2><div class="log">'+g.log.slice(0,14).map(l=>'<div>'+esc(l)+'</div>').join('')+'</div></div>';
+}
+function render(){
+  handlers=[];
+  if(game&&game.status!=='lobby'&&game.v!==ui.v){ui.v=game.v;resetSel();}
+  $app.innerHTML=!code||!game?vHome():game.status==='lobby'?vLobby():vTable();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(b&&!b.disabled&&handlers[b.dataset.h])handlers[b.dataset.h]();});
+document.addEventListener('input',e=>{
+  if(e.target.id==='f-name'){ui.name=e.target.value;store.set('qd_name',ui.name);}
+  if(e.target.id==='f-code')ui.join=e.target.value;
+});
+
+const SAVE_ERR='That did not save. If it keeps happening you may only have view access: ask the person who shared this page to invite you as an editor.';
+const gameRef=()=>db.doc('games/'+code);
+async function commit(a){
+  if(ui.busy||!game)return;
+  const g=JSON.parse(JSON.stringify(game)),err=act(g,me,a);
+  if(err)return flash(err);
+  g.v=(g.v||0)+1;ui.busy=true;ui.msg='';
+  try{await gameRef().set(g);game=g;}catch(e){ui.msg=SAVE_ERR;}
+  ui.busy=false;render();
+}
+function myName(){const n=ui.name.trim().slice(0,16);if(!n)flash('Type a name first.');return n;}
+function watch(){
+  unsubs.push(gameRef().onSnapshot(s=>{game=s.exists?s.data():null;if(!game){leaveTable(true);return;}
+    if(game.status==='lobby'&&!seats.some(x=>x.id===me))sit();render();},()=>flash('Lost the connection to this table. Reload the page.')));
+  unsubs.push(gameRef().collection('seats').onSnapshot(q=>{seats=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>a.at-b.at);render();},()=>{}));
+}
+let sitting=false;
+async function sit(){
+  if(sitting)return;sitting=true;
+  try{await gameRef().collection('seats').doc(me).set({name:ui.name.trim().slice(0,16)||'Player',at:Date.now()});}catch(e){ui.msg=SAVE_ERR;render();}
+  sitting=false;
+}
+async function createTable(){
+  if(!myName()||ui.busy)return;ui.busy=true;ui.msg='';render();
+  try{
+    let c='';for(let tries=0;tries<5;tries++){c='';for(let i=0;i<4;i++)c+='ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*24)];
+      if(!(await db.doc('games/'+c).get()).exists)break;}
+    code=c;await gameRef().set({status:'lobby',host:me,v:0});
+    game={status:'lobby',host:me,v:0};seats=[];store.set('qd_code',code);await sit();watch();
+  }catch(e){code=null;game=null;ui.msg=SAVE_ERR;}
+  ui.busy=false;render();
+}
+async function joinTable(raw){
+  const c=String(raw||'').toUpperCase().replace(/[^A-Z]/g,'');
+  if(c.length!==4)return flash('Table codes are 4 letters.');
+  if(!myName()||ui.busy)return;ui.busy=true;ui.msg='';render();
+  try{
+    const s=await db.doc('games/'+c).get();
+    if(!s.exists)ui.msg='There is no table '+c+'. Check the code with your host.';
+    else{code=c;game=s.data();seats=[];store.set('qd_code',code);watch();}
+  }catch(e){ui.msg='Could not reach that table. Try again.';}
+  ui.busy=false;render();
+}
+function leaveTable(silent){
+  unsubs.forEach(u=>u());unsubs=[];
+  if(silent!==true&&game&&game.status==='lobby'&&db)gameRef().collection('seats').doc(me).delete().catch(()=>{});
+  code=null;game=null;seats=[];ui.join='';ui.msg='';ui.v=-1;resetSel();store.set('qd_code','');render();
+}
+async function startGame(){
+  if(ui.busy||seats.length<2)return;ui.busy=true;
+  const g=newGame(seats.slice(0,5).map(s=>({id:s.id,name:String(s.name||'Player').slice(0,16)})),me);
+  try{await gameRef().set(g);game=g;}catch(e){ui.msg=SAVE_ERR;}
+  ui.busy=false;render();
+}
+async function againGame(){
+  try{await gameRef().set({status:'lobby',host:game.host,v:(game.v||0)+1});}catch(e){flash(SAVE_ERR);}
+}
+(async function boot(){
+  ui.name=store.get('qd_name')||'';
+  ui.join=(location.hash||'').replace(/[^A-Za-z]/g,'').slice(0,4).toUpperCase()||store.get('qd_code')||'';
+  render();
+  const c=window.claude;
+  if(!c||!c.use){ui.nodb=true;return render();}
+  const r=await Promise.all([c.use('db'),c.use('user')]);
+  db=r[0];if(!db){ui.nodb=true;return render();}
+  let id=r[1]?await r[1].id():null;
+  if(!id){id=store.get('qd_pid');if(!id){id='g'+Math.random().toString(36).slice(2,12);store.set('qd_pid',id);}}
+  me=id;ui.ready=true;render();
+})();
+</script>
